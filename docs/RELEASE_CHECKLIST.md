@@ -1,19 +1,21 @@
 # Release checklist
 
-Complete these steps before the first public release.
+Status of the v0.1.0 launch and remaining manual validation. Unchecked items are follow-up checks, not claims of completed testing.
 
 - [x] Add the MIT license for original code, website and artwork, retaining required third-party notices.
-- [ ] Clone the release commit into a clean checkout and build it.
+- [x] Build the tagged release commit in a clean GitHub Actions checkout.
 - [ ] Smoke-test installer and portable ZIP on a clean Windows 11 x64 system without .NET installed.
 - [ ] Check startup opt-in, upgrade, and uninstall behavior.
 - [ ] Confirm the default configuration works offline; redact identifying details from screenshots and media.
-- [ ] Measure CPU and memory footprint and document the results or limitations in `docs/PERFORMANCE.md`.
-- [ ] Replace or augment renderer media with a real desktop/taskbar capture before launch, if available.
+- [x] Measure CPU and memory footprint and document the results and limitations in `docs/PERFORMANCE.md`.
+- [ ] Optionally augment renderer media with a real desktop/taskbar capture.
 - [ ] Confirm sensor limitations and unavailable-value behavior on supported hardware.
-- [ ] Set the repository description, website, and topics: `windows11`, `system-monitor`, `cpu`, `ram`, `taskbar`, `dotnet`, `wpf`.
-- [ ] Enable private vulnerability reporting in repository settings.
-- [ ] Upload `assets/brand/social-preview.png` as the repository social preview after the license is selected.
-- [ ] Create and push a version tag (for example `v0.1.0`) on the release commit; the manual workflow's selected ref must resolve to that same tag commit.
-- [ ] Run the Draft release workflow, review the draft and all three release assets, then publish it.
-- [ ] Verify the GitHub Pages deployment from `main`. Future website changes deploy automatically; manual dispatch is also available.
-- [ ] Verify the public website, releases page, download links, checksums, and Ko-fi link.
+- [x] Set the repository description, website, and topics: `windows11`, `system-monitor`, `cpu`, `ram`, `taskbar`, `dotnet`, `wpf`.
+- [ ] Optionally enable private vulnerability reporting in repository settings.
+- [ ] Optionally upload `assets/brand/social-preview.png` as the repository social preview.
+- [x] Create and push v0.1.0 on the release commit; the manual workflow's selected ref resolves to the same tag commit.
+- [x] Run the Draft release workflow, verify the three downloaded assets, then publish v0.1.0.
+- [x] Verify the GitHub Pages deployment from `main`. Future website changes deploy automatically; manual dispatch is also available.
+- [x] Verify the public website, releases page, download links and checksums; retain the supplied Ko-fi link.
+
+Published: [repository](https://github.com/VC067/win-stats), [website](https://vc067.github.io/win-stats/), [v0.1.0 release](https://github.com/VC067/win-stats/releases/tag/v0.1.0).
