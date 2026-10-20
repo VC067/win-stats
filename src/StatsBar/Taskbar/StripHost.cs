@@ -46,6 +46,16 @@ public sealed class StripHost : IDisposable
     private bool _trackingLeave;
     private bool _presenting;
     private bool _disposed;
+    private bool _trayAdded;
+    private IntPtr _trayIcon;
+    private string _trayTip = "Win Stats";
+    private const uint TrayMessage = 0x8001;
+    private const uint NimAdd = 0;
+    private const uint NimModify = 1;
+    private const uint NimDelete = 2;
+    private const uint NifMessage = 0x1;
+    private const uint NifIcon = 0x2;
+    private const uint NifTip = 0x4;
 
     public event Action<ModuleId>? ItemActivated;
     public event Action? SettingsRequested;
@@ -102,6 +112,7 @@ public sealed class StripHost : IDisposable
         }
 
         host = new StripHost(hwnd);
+        host.AddTrayIcon();
         return true;
     }
 
@@ -112,6 +123,7 @@ public sealed class StripHost : IDisposable
         _thresholdColors = thresholdColors;
         _spacing = spacing;
         _widthCap = widthCapPixels;
+        UpdateTrayTip();
         Relayout();
         var signature = Signature();
         if (signature == _signature && !NeedsPresent())
@@ -163,6 +175,7 @@ public sealed class StripHost : IDisposable
         if (_disposed)
             return;
         _disposed = true;
+        RemoveTrayIcon();
         if (_current == this)
             _current = null;
         if (NativeMethods.IsWindow(_hwnd))
@@ -231,7 +244,18 @@ public sealed class StripHost : IDisposable
     {
         if (msg == TaskbarCreatedMessage)
         {
+            AddTrayIcon();
             TaskbarRecreated?.Invoke();
+            return IntPtr.Zero;
+        }
+
+        if (msg == TrayMessage)
+        {
+            var mouse = unchecked((uint)lParam.ToInt64());
+            if (mouse is WmLButtonUp or 0x0203)
+                SettingsRequested?.Invoke();
+            else if (mouse is WmRButtonUp or 0x007B)
+                ShowMenu();
             return IntPtr.Zero;
         }
 
@@ -316,6 +340,76 @@ public sealed class StripHost : IDisposable
             return;
         var track = new TrackMouse { Size = Marshal.SizeOf<TrackMouse>(), Flags = 2, Hwnd = _hwnd };
         _trackingLeave = TrackMouseEvent(ref track);
+    }
+
+    private void AddTrayIcon()
+    {
+        if (_trayIcon == IntPtr.Zero)
+            _trayIcon = CreateTrayIcon();
+        if (_trayIcon == IntPtr.Zero)
+            return;
+
+        var data = TrayData();
+        Shell_NotifyIcon(NimDelete, ref data);
+        _trayAdded = Shell_NotifyIcon(NimAdd, ref data);
+    }
+
+    private void RemoveTrayIcon()
+    {
+        if (_trayAdded)
+        {
+            var data = TrayData();
+            Shell_NotifyIcon(NimDelete, ref data);
+            _trayAdded = false;
+        }
+
+        if (_trayIcon == IntPtr.Zero)
+            return;
+        DestroyIcon(_trayIcon);
+        _trayIcon = IntPtr.Zero;
+    }
+
+    private void UpdateTrayTip()
+    {
+        var tip = "Win Stats";
+        if (_widgets.Count > 0)
+            tip = "Win Stats  " + string.Join("   ", _widgets.Select(widget => $"{widget.Label} {widget.Value}"));
+        if (tip.Length > 127)
+            tip = tip[..127];
+        if (tip == _trayTip)
+            return;
+        _trayTip = tip;
+        if (!_trayAdded)
+            return;
+        var data = TrayData();
+        Shell_NotifyIcon(NimModify, ref data);
+    }
+
+    private NotifyIconData TrayData()
+    {
+        return new NotifyIconData
+        {
+            cbSize = Marshal.SizeOf<NotifyIconData>(),
+            hWnd = _hwnd,
+            uID = 1,
+            uFlags = NifMessage | NifIcon | NifTip,
+            uCallbackMessage = TrayMessage,
+            hIcon = _trayIcon,
+            szTip = _trayTip
+        };
+    }
+
+    private static IntPtr CreateTrayIcon()
+    {
+        var executable = Environment.ProcessPath;
+        if (string.IsNullOrWhiteSpace(executable))
+            return IntPtr.Zero;
+        ExtractIconEx(executable, 0, out var large, out var small, 1);
+        if (small == IntPtr.Zero)
+            return large;
+        if (large != IntPtr.Zero && large != small)
+            DestroyIcon(large);
+        return small;
     }
 
     private void ShowMenu()
@@ -480,6 +574,39 @@ public sealed class StripHost : IDisposable
         public BitmapInfoHeader Header;
     }
 
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    private struct NotifyIconData
+    {
+        public int cbSize;
+        public IntPtr hWnd;
+        public uint uID;
+        public uint uFlags;
+        public uint uCallbackMessage;
+        public IntPtr hIcon;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)]
+        public string szTip;
+        public int dwState;
+        public int dwStateMask;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
+        public string szInfo;
+        public uint uTimeoutOrVersion;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 64)]
+        public string szInfoTitle;
+        public uint dwInfoFlags;
+        public Guid guidItem;
+        public IntPtr hBalloonIcon;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct IconInfo
+    {
+        public int fIcon;
+        public int xHotspot;
+        public int yHotspot;
+        public IntPtr hbmMask;
+        public IntPtr hbmColor;
+    }
+
     [StructLayout(LayoutKind.Sequential)]
     private struct TrackMouse
     {
@@ -524,6 +651,21 @@ public sealed class StripHost : IDisposable
 
     [DllImport("gdi32.dll")]
     private static extern bool DeleteObject(IntPtr obj);
+
+    [DllImport("gdi32.dll")]
+    private static extern IntPtr CreateBitmap(int width, int height, uint planes, uint bitCount, IntPtr bits);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr CreateIconIndirect(ref IconInfo icon);
+
+    [DllImport("user32.dll")]
+    private static extern bool DestroyIcon(IntPtr icon);
+
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
+    private static extern bool Shell_NotifyIcon(uint message, ref NotifyIconData data);
+
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
+    private static extern uint ExtractIconEx(string file, int index, out IntPtr large, out IntPtr small, uint count);
 
     [DllImport("gdi32.dll", CharSet = CharSet.Unicode)]
     private static extern IntPtr CreateFont(int height, int width, int escapement, int orientation, int weight, uint italic, uint underline, uint strikeOut, uint charSet, uint outputPrecision, uint clipPrecision, uint quality, uint pitchAndFamily, string face);

@@ -14,9 +14,14 @@
     <Company>Win Stats</Company>
     <Description>System stats for the Windows taskbar.</Description>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\WinStats.ico</ApplicationIcon>
     <ServerGarbageCollection>false</ServerGarbageCollection>
     <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
     <TieredPGO>false</TieredPGO>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\WinStats.ico" />
+  </ItemGroup>
 
 </Project>

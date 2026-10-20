@@ -1,0 +1,38 @@
+name: Bug report
+description: Report a problem with Win Stats
+title: ""
+labels: []
+assignees: []
+body:
+  - type: input
+    id: windows_build
+    attributes:
+      label: Windows build
+      description: Include the Windows version and build number.
+      placeholder: Windows 11, build 26100
+    validations:
+      required: true
+  - type: input
+    id: app_version
+    attributes:
+      label: Win Stats version
+      description: Include the app version shown in the app or package.
+    validations:
+      required: true
+  - type: textarea
+    id: hardware
+    attributes:
+      label: Hardware (if relevant)
+      description: Include relevant CPU, GPU, memory, or disk details.
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: What happened?
+      description: Describe what you expected, what happened, and how to reproduce it.
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostic details
+      description: Add relevant logs or diagnostic output. Review and redact IP addresses and process names before sharing.

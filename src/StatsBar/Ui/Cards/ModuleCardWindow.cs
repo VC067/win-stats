@@ -15,6 +15,7 @@ namespace StatsBar.Ui.Cards;
 public sealed class ModuleCardWindow : Window
 {
     public event Action? SettingsRequested;
+    internal bool KeepOpenForDiagnostics { get; set; }
 
     private readonly StackPanel _stack;
     private readonly Border _shell;
@@ -223,13 +224,13 @@ public sealed class ModuleCardWindow : Window
     protected override void OnDeactivated(EventArgs e)
     {
         base.OnDeactivated(e);
-        if (!IsVisible)
+        if (!IsVisible || KeepOpenForDiagnostics)
             return;
 
         var openedTick = _openedTick;
         Dispatcher.BeginInvoke(() =>
         {
-            if (!IsVisible || IsActive)
+            if (!IsVisible || IsActive || KeepOpenForDiagnostics)
                 return;
             if (Environment.TickCount64 - openedTick < 400)
                 return;

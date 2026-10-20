@@ -1,6 +1,57 @@
+# Build outputs
 bin/
 obj/
 .nuget/
+artifacts/
+.cache/
+node_modules/
+
+# IDE and editor state
 .vs/
+.idea/
+.vscode/
 *.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Logs and diagnostics
+*.log
+*.dmp
+*.dump
+*.crash
+/statsbar-probe.txt
+/statsbar-*-size.txt
+/statsbar-*-render.png
+/statsbar-strip-*.png
+
+# Local environment and signing credentials
+.env
+.env.*
+!.env.example
+*.pfx
+*.p12
+*.snk
+*.key
+*.pem
+
+# Release packages
+/src/StatsBar/publish/
+/src/StatsBar/*.zip
+/src/StatsBar/*.msix
+/src/StatsBar/*.appx
+/src/StatsBar/*.msi
+/src/StatsBar/*.exe
 anchor.txt
+
+# Local design explorations and implementation notes
+/assets/brand/concept-*.svg
+/assets/brand/concepts.png
+/assets/brand/round-two.*
+/scripts/build-brand-round-two.mjs
+/docs/IMPLEMENTATION_REPORT.md

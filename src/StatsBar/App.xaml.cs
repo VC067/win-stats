@@ -7,6 +7,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using Microsoft.Win32;
 using StatsBar.Core;
+using StatsBar.Diagnostics;
 using StatsBar.Modules;
 using StatsBar.Settings;
 using StatsBar.Sources;
@@ -40,10 +41,39 @@ public partial class App : Application
     private ModuleId? _openModule;
     private int _cardAnchorLeft;
     private int _cardAnchorTop;
+    private BenchmarkSession? _benchmark;
+    private bool _benchmarkMode;
 
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        var mediaIndex = Array.IndexOf(e.Args, "--media-export");
+        if (mediaIndex >= 0)
+        {
+            if (mediaIndex + 1 >= e.Args.Length)
+            {
+                Shutdown(2);
+                return;
+            }
+            try
+            {
+                MediaExport.Save(e.Args[mediaIndex + 1]);
+                Shutdown();
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+            {
+                Shutdown(1);
+            }
+            return;
+        }
+
+        var benchmarkIndex = Array.IndexOf(e.Args, "--benchmark-output");
+        _benchmarkMode = benchmarkIndex >= 0;
+        if (_benchmarkMode && benchmarkIndex + 1 >= e.Args.Length)
+        {
+            Shutdown(2);
+            return;
+        }
         if (e.Args.Contains("--probe"))
         {
             WriteProbe();
@@ -79,7 +109,7 @@ public partial class App : Application
             return;
         }
 
-        _settings = SettingsStore.Load();
+        _settings = _benchmarkMode ? new AppSettings() : SettingsStore.Load();
         _probe.TemperatureUnit = _settings.TemperatureUnit;
         if (_settings.StartWithWindows)
             StartupRegistration.Apply(true);
@@ -110,6 +140,15 @@ public partial class App : Application
         _sampleTimer = new Timer(_ => Sample(), null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
         _trimTimer = new Timer(_ => TrimWorkingSet(), null, TimeSpan.FromSeconds(30), Timeout.InfiniteTimeSpan);
         SystemEvents.UserPreferenceChanged += OnPreferenceChanged;
+        if (_benchmarkMode)
+            _benchmark = new BenchmarkSession(e.Args[benchmarkIndex + 1],
+                () =>
+                {
+                    if (_card is not { IsVisible: true } || _openModule != ModuleId.Cpu)
+                        OpenModule(ModuleId.Cpu);
+                },
+                () => _card is { IsVisible: true } ? _openModule : null,
+                Shutdown);
     }
 
     protected override void OnExit(ExitEventArgs e)
@@ -119,6 +158,7 @@ public partial class App : Application
         _sampleTimer?.Dispose();
         _trimTimer?.Dispose();
         _probe.Dispose();
+        _benchmark?.Dispose();
         _strip?.Dispose();
         _mutex?.Dispose();
         base.OnExit(e);
@@ -249,7 +289,8 @@ public partial class App : Application
     private void ChooseAnchor(StripAnchor anchor)
     {
         _settings.Anchor = anchor;
-        SettingsStore.Save(_settings);
+        if (!_benchmarkMode)
+            SettingsStore.Save(_settings);
         if (_strip != null)
             _strip.CurrentAnchor = anchor;
         MaintainPlacement();
@@ -266,8 +307,11 @@ public partial class App : Application
 
     private void ApplySettings()
     {
-        SettingsStore.Save(_settings);
-        StartupRegistration.Apply(_settings.StartWithWindows);
+        if (!_benchmarkMode)
+        {
+            SettingsStore.Save(_settings);
+            StartupRegistration.Apply(_settings.StartWithWindows);
+        }
         _probe.TemperatureUnit = _settings.TemperatureUnit;
         if (_strip != null)
             _strip.CurrentAnchor = _settings.Anchor;
@@ -316,7 +360,7 @@ public partial class App : Application
     {
         if (_card != null)
             return;
-        _card = new ModuleCardWindow();
+        _card = new ModuleCardWindow { KeepOpenForDiagnostics = _benchmarkMode };
         _card.SettingsRequested += OpenSettings;
     }
 

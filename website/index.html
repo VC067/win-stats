@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Win Stats: system stats in the Windows taskbar</title>
+  <meta name="description" content="Win Stats keeps CPU, memory, GPU, disk, network and sensors on the Windows 11 taskbar.">
+  <link rel="canonical" href="https://vc067.github.io/win-stats/">
+  <link rel="icon" href="assets/brand/favicon.ico">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Win Stats: system stats in the Windows taskbar">
+  <meta property="og:description" content="CPU, memory, GPU, disk, network and sensors on the Windows 11 taskbar.">
+  <meta property="og:url" content="https://vc067.github.io/win-stats/">
+  <meta property="og:image" content="https://vc067.github.io/win-stats/assets/brand/social-preview.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="top">
+    <div class="wrap bar">
+      <a class="brand" href="#top">
+        <img src="assets/brand/logo.svg" width="28" height="28" alt="">
+        Win Stats
+      </a>
+      <nav aria-label="Main">
+        <a href="#modules">Modules</a>
+        <a href="#faq">Questions</a>
+      </nav>
+      <a class="btn" href="https://github.com/VC067/win-stats" target="_blank" rel="noreferrer">GitHub</a>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="hero" id="top">
+      <div class="wrap hero-grid">
+        <div class="hero-copy">
+          <h1>Your system.<br><span>Right in the taskbar.</span></h1>
+          <p class="lead">CPU, memory, graphics, disk and network activity.<br class="desktop-break"> Keep an eye on your Windows PC without opening Task Manager.</p>
+          <a class="btn primary" href="https://github.com/VC067/win-stats/releases/download/v0.1.0/WinStats-Setup-x64.exe">Download for Windows</a>
+          <p class="fine">Windows 11 x64. <a href="https://github.com/VC067/win-stats/releases/download/v0.1.0/WinStats-portable-x64.zip">Portable ZIP</a> also available.</p>
+        </div>
+      </div>
+      <figure class="overview wrap">
+        <div class="overview-bar" aria-hidden="true">
+          <img src="assets/brand/logo.svg" width="20" height="20" alt="">
+          <picture><source media="(prefers-color-scheme: light)" srcset="assets/media/strip-detailed-light.png"><img src="assets/media/strip-detailed-dark.png" width="912" height="60" alt=""></picture>
+        </div>
+        <div class="overview-cards">
+          <button class="gallery-preview" data-preview="cpu" type="button" aria-haspopup="dialog" aria-label="Enlarge CPU card"><picture><source media="(prefers-color-scheme: light)" srcset="assets/media/cpu-light.png"><img src="assets/media/cpu-dark.png" width="640" height="1408" alt="CPU card with usage, history and processes."></picture></button>
+          <button class="gallery-preview" data-preview="ram" type="button" aria-haspopup="dialog" aria-label="Enlarge memory card"><picture><source media="(prefers-color-scheme: light)" srcset="assets/media/ram-light.png"><img src="assets/media/ram-dark.png" width="640" height="1148" alt="Memory allocation and processes."></picture></button>
+          <button class="gallery-preview" data-preview="gpu" type="button" aria-haspopup="dialog" aria-label="Enlarge GPU card"><picture><source media="(prefers-color-scheme: light)" srcset="assets/media/gpu-light.png"><img src="assets/media/gpu-dark.png" width="640" height="1087" alt="GPU activity and video memory."></picture></button>
+          <button class="gallery-preview" data-preview="disk" type="button" aria-haspopup="dialog" aria-label="Enlarge disk card"><picture><source media="(prefers-color-scheme: light)" srcset="assets/media/disk-light.png"><img src="assets/media/disk-dark.png" width="640" height="596" alt="Drive activity and storage space."></picture></button>
+          <button class="gallery-preview" data-preview="network" type="button" aria-haspopup="dialog" aria-label="Enlarge network card"><picture><source media="(prefers-color-scheme: light)" srcset="assets/media/network-light.png"><img src="assets/media/network-dark.png" width="640" height="943" alt="Network speeds and adapter information."></picture></button>
+          <button class="gallery-preview" data-preview="sensors" type="button" aria-haspopup="dialog" aria-label="Enlarge sensors card"><picture><source media="(prefers-color-scheme: light)" srcset="assets/media/sensors-light.png"><img src="assets/media/sensors-dark.png" width="640" height="895" alt="Available GPU sensor readings."></picture></button>
+        </div>
+        <figcaption><span class="mobile-hint">Swipe to see all six cards. </span>Actual app UI with sample readings. Cards are shown together for this overview. Select a card to enlarge it.</figcaption>
+      </figure>
+    </section>
+
+    <section class="resources" id="resources" aria-labelledby="resources-title">
+      <div class="wrap">
+        <div class="resource-feature">
+        <div class="resource-intro">
+        <h2 id="resources-title">Light on resources.</h2>
+        <p>A native Windows app with a small measured footprint. Process details are collected only when you open a CPU or memory card.</p>
+        </div>
+        <dl class="resource-metrics">
+          <div><dt>Average CPU at idle</dt><dd><strong>0.17<span>%</span></strong><small>Default taskbar strip running</small></dd></div>
+          <div><dt>Private memory at idle</dt><dd><strong>35.4 <span>MiB</span></strong><small>48.9 MiB working set</small></dd></div>
+        </dl>
+        <div class="resource-context">
+        <p class="panel-usage">With the CPU panel open: <strong>0.41% CPU</strong>, <strong>98.6 MiB private memory</strong> and 116.0 MiB working set.</p>
+        <p class="measurement-note">Recorded on one Windows 11 PC with 12 logical processors, 13 October 2026. Averages of 30 samples per state; usage varies by hardware and workload.</p>
+        </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="modules" id="modules">
+      <div class="wrap">
+        <h2>Six ways to see what’s happening.</h2>
+        <p class="sub">Pick a module. See what’s running, what’s busy and where your resources are going.</p>
+        <div class="module-browser">
+        <div class="tabs" role="tablist" aria-label="Modules" aria-orientation="horizontal">
+          <button type="button" role="tab" id="tab-cpu" aria-selected="true" aria-controls="panel" data-module="cpu">CPU</button>
+          <button type="button" role="tab" id="tab-ram" aria-selected="false" aria-controls="panel" tabindex="-1" data-module="ram">Memory</button>
+          <button type="button" role="tab" id="tab-gpu" aria-selected="false" aria-controls="panel" tabindex="-1" data-module="gpu">GPU</button>
+          <button type="button" role="tab" id="tab-disk" aria-selected="false" aria-controls="panel" tabindex="-1" data-module="disk">Disk</button>
+          <button type="button" role="tab" id="tab-network" aria-selected="false" aria-controls="panel" tabindex="-1" data-module="network">Network</button>
+          <button type="button" role="tab" id="tab-sensors" aria-selected="false" aria-controls="panel" tabindex="-1" data-module="sensors">Sensors</button>
+        </div>
+        <div class="panel" id="panel" role="tabpanel" aria-labelledby="tab-cpu" tabindex="0">
+          <div class="panel-copy">
+            <h3 id="module-title">A closer look at your CPU.</h3>
+            <p id="module-description">Usage, per-core activity, frequency, uptime and the busiest processes.</p>
+            <p class="module-note" id="module-note">Process details are collected only while this card is open.</p>
+            <button class="text-button" id="enlarge-preview" type="button" data-preview="cpu" aria-haspopup="dialog" aria-label="Enlarge CPU preview">View full panel</button>
+          </div>
+          <button class="module-art" id="module-art" type="button" data-preview="cpu" aria-haspopup="dialog" aria-label="Enlarge CPU preview">
+            <img id="module-image" src="assets/media/cpu-dark.png" alt="Win Stats CPU card. Numbers are samples." width="640" height="1408" loading="lazy">
+          </button>
+        </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="faq" id="faq">
+      <div class="wrap faq-grid">
+        <div>
+        <h2>Questions</h2>
+        <p class="sub">A few things to know before you try it.</p>
+        </div>
+        <div>
+        <details>
+          <summary>How do I install and open it?</summary>
+          <p>Download <a href="https://github.com/VC067/win-stats/releases/download/v0.1.0/WinStats-Setup-x64.exe">WinStats-Setup-x64.exe</a>. The installer adds Win Stats to your Start menu. Prefer portable? Extract the entire <a href="https://github.com/VC067/win-stats/releases/download/v0.1.0/WinStats-portable-x64.zip">portable ZIP</a> and run WinStats.exe from that folder. No separate .NET installation is needed.</p>
+        </details>
+        <details>
+          <summary>Where is the app window?</summary>
+          <p>Win Stats lives on your taskbar and in the notification area. Click a reading to see its card. Click the blue Pulse tray icon to open Settings, or right-click it for the menu. Windows may place the icon in the hidden icons area.</p>
+        </details>
+        <details>
+          <summary>Which Windows versions?</summary>
+          <p>Windows 11, 64-bit. Windows 10 and ARM are not verified.</p>
+        </details>
+        <details>
+          <summary>Why do some values say "--"?</summary>
+          <p>Windows or the GPU driver did not provide that reading. CPU temperature stays blank because there is no sensor driver.</p>
+        </details>
+        <details>
+          <summary>Does it contact an external service?</summary>
+          <p>Public IP lookup is off by default. If you enable it in Settings, Win Stats contacts api.ipify.org to find the internet-facing IP address of your connection and display it in the network card.</p>
+        </details>
+        <details>
+          <summary>How do updates work?</summary>
+          <p>Updates are manual. There is no automatic updater or update checker. Download the new release from GitHub, quit Win Stats from its tray menu, and run the new installer or replace the extracted portable files. Your settings are kept.</p>
+        </details>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap bar">
+      <a class="brand" href="#top">
+        <img src="assets/brand/logo.svg" width="22" height="22" alt="">
+        Win Stats
+      </a>
+      <p>© 2026 VC067</p>
+      <p class="footer-links">
+        <a href="https://github.com/VC067/win-stats" target="_blank" rel="noreferrer">GitHub</a>
+        <a href="https://ko-fi.com/vedantchhajed" target="_blank" rel="noreferrer">Buy me a coffee</a>
+      </p>
+    </div>
+  </footer>
+  <dialog id="preview-dialog" aria-labelledby="preview-title">
+    <div class="dialog-bar"><h2 id="preview-title">CPU preview</h2><button id="close-preview" class="btn" type="button" autofocus>Close</button></div>
+    <p class="fine">Application UI with sample readings.</p>
+    <img id="full-preview" src="assets/media/cpu-dark.png" alt="CPU card with sample readings." width="640" height="1408">
+  </dialog>
+  <script src="assets/vendor/gsap.min.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
