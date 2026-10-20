@@ -14,8 +14,8 @@ Status of the v0.1.0 launch and remaining manual validation. Unchecked items are
 - [ ] Optionally enable private vulnerability reporting in repository settings.
 - [ ] Optionally upload `assets/brand/social-preview.png` as the repository social preview.
 - [x] Create and push v0.1.0 on the release commit; the manual workflow's selected ref resolves to the same tag commit.
-- [x] Run the Draft release workflow, verify the three downloaded assets, then publish v0.1.0.
+- [x] Run the Draft release workflow, verify the installer and ZIP downloads and their checksums, then publish v0.1.0.
 - [x] Verify the GitHub Pages deployment from `main`. Future website changes deploy automatically; manual dispatch is also available.
-- [x] Verify the public website, releases page, download links and checksums; retain the supplied Ko-fi link.
+- [x] Verify the public website, releases page, download links and checksums preserved in release notes; retain the supplied Ko-fi link.
 
 Published: [repository](https://github.com/VC067/win-stats), [website](https://vc067.github.io/win-stats/), [v0.1.0 release](https://github.com/VC067/win-stats/releases/tag/v0.1.0).
