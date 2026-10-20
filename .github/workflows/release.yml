@@ -32,7 +32,25 @@ jobs:
         with:
           dotnet-version: 10.0.x
       - name: Install Inno Setup
-        run: choco install innosetup --version=6.7.3 --no-progress --yes
+        shell: pwsh
+        run: |
+          $installerPath = Join-Path $env:RUNNER_TEMP 'innosetup-6.7.3.exe'
+          $compilerDirectory = Join-Path $env:RUNNER_TEMP 'innosetup-6.7.3'
+          Invoke-WebRequest -Uri 'https://github.com/jrsoftware/issrc/releases/download/is-6_7_3/innosetup-6.7.3.exe' -OutFile $installerPath
+          $expectedHash = '9c73c3bae7ed48d44112a0f48e66742c00090bdb5bef71d9d3c056c66e97b732'
+          if ((Get-FileHash -LiteralPath $installerPath -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expectedHash) {
+            throw 'Inno Setup download checksum did not match the pinned official release.'
+          }
+          $installerArguments = '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP- /CURRENTUSER /DIR="{0}"' -f $compilerDirectory
+          $installation = Start-Process -FilePath $installerPath -ArgumentList $installerArguments -WindowStyle Hidden -Wait -PassThru
+          if ($installation.ExitCode -ne 0) {
+            throw "Inno Setup installation failed with exit code $($installation.ExitCode)."
+          }
+          $compilerPath = Join-Path $compilerDirectory 'ISCC.exe'
+          if (-not (Test-Path -LiteralPath $compilerPath -PathType Leaf)) {
+            throw 'Inno Setup compiler was not installed.'
+          }
+          "ISCC_PATH=$compilerPath" >> $env:GITHUB_ENV
       - name: Validate version and license
         shell: pwsh
         env:
@@ -75,7 +93,7 @@ jobs:
           "TARGET_COMMITISH=$headSha" >> $env:GITHUB_ENV
       - name: Package release
         shell: pwsh
-        run: ./scripts/package.ps1 -Version $env:RELEASE_VERSION
+        run: ./scripts/package.ps1 -Version $env:RELEASE_VERSION -IsccPath $env:ISCC_PATH
       - uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ env.RELEASE_TAG }}
