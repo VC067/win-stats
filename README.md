@@ -10,6 +10,10 @@ Maintained by [VC067](https://github.com/VC067).
 
 ## Product demonstration
 
+Click the preview to play the silent desktop walkthrough:
+
+[![Watch Win Stats running on a Windows desktop](website/assets/media/win-stats-demo-poster.jpg)](https://vc067.github.io/win-stats/assets/media/win-stats-demo.mp4)
+
 Application UI rendered with illustrative sample values:
 
 ![Win Stats balanced taskbar strip](website/assets/media/strip-balanced-dark.png)
