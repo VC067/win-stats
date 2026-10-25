@@ -141,6 +141,17 @@ darkQuery.addEventListener("change", () => {
 select(current, false);
 setDialogImage(dialogKey);
 
+const demoVideo = document.querySelector(".demo-video");
+if (demoVideo && "IntersectionObserver" in window && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+  const demoObserver = new IntersectionObserver((entries) => {
+    if (entries.some((entry) => entry.isIntersecting)) {
+      demoVideo.play().catch(() => {});
+      demoObserver.disconnect();
+    }
+  }, { threshold: 0.35 });
+  demoObserver.observe(demoVideo);
+}
+
 if (window.gsap && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
   window.gsap.from(".hero-copy, .overview", { opacity: 0, y: 10, duration: 0.55, stagger: 0.08, ease: "power2.out", clearProps: "all" });
 }
