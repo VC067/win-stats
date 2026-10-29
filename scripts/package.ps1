@@ -64,13 +64,22 @@ if ($LASTEXITCODE -ne 0) {
     throw "dotnet publish failed with exit code $LASTEXITCODE."
 }
 
+$sensorServiceProjectPath = Join-Path $workspaceRoot 'src\StatsBar.SensorService\StatsBar.SensorService.csproj'
+$sensorServicePublishPath = Join-Path $publishPath 'SensorsService'
+& dotnet publish $sensorServiceProjectPath --configuration Release --runtime win-x64 --self-contained true --output $sensorServicePublishPath -p:Version=$Version -p:PublishTrimmed=false -p:PublishAot=false
+if ($LASTEXITCODE -ne 0) {
+    throw "Sensor service dotnet publish failed with exit code $LASTEXITCODE."
+}
+
 $licensePath = Join-Path $workspaceRoot 'LICENSE'
 $noticesPath = Join-Path $workspaceRoot 'THIRD_PARTY_NOTICES.md'
 if (Test-Path -LiteralPath $licensePath -PathType Leaf) {
     Copy-Item -LiteralPath $licensePath -Destination $publishPath
+    Copy-Item -LiteralPath $licensePath -Destination $sensorServicePublishPath
 }
 if (Test-Path -LiteralPath $noticesPath -PathType Leaf) {
     Copy-Item -LiteralPath $noticesPath -Destination $publishPath
+    Copy-Item -LiteralPath $noticesPath -Destination $sensorServicePublishPath
 }
 
 $runtimeConfigPath = Join-Path $publishPath 'WinStats.runtimeconfig.json'
@@ -134,6 +143,10 @@ foreach ($noticePackage in $noticePackages) {
         Copy-Item -LiteralPath $sourcePath -Destination (Join-Path $noticeDirectory $noticeFile.Destination)
     }
 }
+
+$sensorServiceNoticesPath = Join-Path $sensorServicePublishPath 'notices'
+New-Item -ItemType Directory -Path $sensorServiceNoticesPath -Force | Out-Null
+Get-ChildItem -LiteralPath (Join-Path $publishPath 'notices') | Copy-Item -Destination $sensorServiceNoticesPath -Recurse -Force
 
 $portableZip = Join-Path $releasePath 'WinStats-portable-x64.zip'
 Add-Type -AssemblyName System.IO.Compression.FileSystem

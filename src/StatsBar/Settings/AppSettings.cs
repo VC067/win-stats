@@ -52,6 +52,12 @@ public enum TemperatureUnit
     Fahrenheit
 }
 
+public enum SensorTemperatureSource
+{
+    Gpu,
+    Cpu
+}
+
 public sealed class ModuleSetting
 {
     public ModuleId Id { get; set; }
@@ -72,6 +78,10 @@ public sealed class AppSettings
     public ThemePreference Theme { get; set; } = ThemePreference.System;
 
     public TemperatureUnit TemperatureUnit { get; set; } = TemperatureUnit.Celsius;
+
+    public bool CpuTemperatureEnabled { get; set; }
+
+    public SensorTemperatureSource SensorTemperatureSource { get; set; } = SensorTemperatureSource.Gpu;
 
     public bool PublicIp { get; set; }
 

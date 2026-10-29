@@ -46,6 +46,12 @@ public sealed class StripHost : IDisposable
     private bool _trackingLeave;
     private bool _presenting;
     private bool _disposed;
+    private IntPtr _frameDib;
+    private IntPtr _frameDc;
+    private IntPtr _framePrevious;
+    private IntPtr _frameBits;
+    private int _frameWidth;
+    private int _frameHeight;
     private bool _trayAdded;
     private IntPtr _trayIcon;
     private string _trayTip = "Win Stats";
@@ -133,6 +139,11 @@ public sealed class StripHost : IDisposable
             Present(force: true);
     }
 
+    public void Refresh()
+    {
+        Present(force: false);
+    }
+
     public bool TryGetItemScreenRect(ModuleId id, out int left, out int top, out int right, out int bottom)
     {
         left = top = right = bottom = 0;
@@ -175,6 +186,7 @@ public sealed class StripHost : IDisposable
         if (_disposed)
             return;
         _disposed = true;
+        ReleaseFrameBuffer();
         RemoveTrayIcon();
         if (_current == this)
             _current = null;
@@ -465,32 +477,22 @@ public sealed class StripHost : IDisposable
         _presenting = true;
         try
         {
-            var info = new BitmapInfo();
-            info.Header.Size = Marshal.SizeOf<BitmapInfoHeader>();
-            info.Header.Width = width;
-            info.Header.Height = -height;
-            info.Header.Planes = 1;
-            info.Header.BitCount = 32;
+            EnsureFrameBuffer(width, height);
+            if (_frameDib == IntPtr.Zero || _frameDc == IntPtr.Zero)
+                return;
 
-            var screen = GetDC(IntPtr.Zero);
-            var dib = CreateDIBSection(screen, ref info, 0, out var bits, IntPtr.Zero, 0);
-            var memory = CreateCompatibleDC(screen);
-            var previous = SelectObject(memory, dib);
             var dpi = NativeMethods.GetDpiForWindow(_hwnd);
             if (dpi == 0)
                 dpi = 96;
-            StripRenderer.Draw(memory, bits, width, height, _placed, _hover, _lightTaskbar, _thresholdColors, dpi, _spacing);
-            StripRenderer.ApplyHitMask(bits, width, height);
+            StripRenderer.Draw(_frameDc, _frameBits, width, height, _placed, _hover, _lightTaskbar, _thresholdColors, dpi, _spacing);
+            StripRenderer.ApplyHitMask(_frameBits, width, height);
 
             var origin = new NativePoint();
             var size = new NativeSize { Width = width, Height = height };
             var blend = new BlendFunction { SourceConstantAlpha = 255, AlphaFormat = 1 };
-            UpdateLayeredWindow(_hwnd, IntPtr.Zero, IntPtr.Zero, ref size, memory, ref origin, 0, ref blend, UlwAlpha);
+            if (!UpdateLayeredWindow(_hwnd, IntPtr.Zero, IntPtr.Zero, ref size, _frameDc, ref origin, 0, ref blend, UlwAlpha))
+                return;
 
-            SelectObject(memory, previous);
-            DeleteDC(memory);
-            DeleteObject(dib);
-            ReleaseDC(IntPtr.Zero, screen);
             _presentedWidth = width;
             _presentedHeight = height;
             _presentedSignature = _signature;
@@ -499,6 +501,67 @@ public sealed class StripHost : IDisposable
         {
             _presenting = false;
         }
+    }
+
+    private void EnsureFrameBuffer(int width, int height)
+    {
+        if (_frameDib != IntPtr.Zero && _frameWidth == width && _frameHeight == height)
+            return;
+
+        ReleaseFrameBuffer();
+
+        var info = new BitmapInfo();
+        info.Header.Size = Marshal.SizeOf<BitmapInfoHeader>();
+        info.Header.Width = width;
+        info.Header.Height = -height;
+        info.Header.Planes = 1;
+        info.Header.BitCount = 32;
+
+        var screen = GetDC(IntPtr.Zero);
+        try
+        {
+            _frameDib = CreateDIBSection(screen, ref info, 0, out _frameBits, IntPtr.Zero, 0);
+            _frameDc = CreateCompatibleDC(screen);
+            if (_frameDib == IntPtr.Zero || _frameDc == IntPtr.Zero)
+            {
+                ReleaseFrameBuffer();
+                return;
+            }
+
+            _framePrevious = SelectObject(_frameDc, _frameDib);
+            if (_framePrevious == IntPtr.Zero || _framePrevious == new IntPtr(-1))
+            {
+                ReleaseFrameBuffer();
+                return;
+            }
+
+            _frameWidth = width;
+            _frameHeight = height;
+        }
+        finally
+        {
+            ReleaseDC(IntPtr.Zero, screen);
+        }
+    }
+
+    private void ReleaseFrameBuffer()
+    {
+        if (_frameDc != IntPtr.Zero)
+        {
+            if (_framePrevious != IntPtr.Zero && _framePrevious != new IntPtr(-1))
+                SelectObject(_frameDc, _framePrevious);
+            DeleteDC(_frameDc);
+            _frameDc = IntPtr.Zero;
+            _framePrevious = IntPtr.Zero;
+        }
+        if (_frameDib != IntPtr.Zero)
+        {
+            DeleteObject(_frameDib);
+            _frameDib = IntPtr.Zero;
+        }
+        _frameBits = IntPtr.Zero;
+        _frameWidth = 0;
+        _frameHeight = 0;
     }
 
     private static int LowWord(IntPtr value) => (short)(value.ToInt32() & 0xFFFF);

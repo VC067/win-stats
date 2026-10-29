@@ -1,3 +1,4 @@
+using System.Globalization;
 using StatsBar.Settings;
 
 namespace StatsBar.Core;
@@ -65,6 +66,15 @@ public static class FormatText
         var value = unit == TemperatureUnit.Fahrenheit ? celsius.Value * 9d / 5d + 32d : celsius.Value;
         var suffix = unit == TemperatureUnit.Fahrenheit ? "F" : "C";
         return $"{Math.Round(value):0}°{suffix}";
+    }
+
+    public static string PeakTime(DateTimeOffset at, DateTimeOffset now)
+    {
+        var local = at.ToLocalTime();
+        var today = now.ToLocalTime().Date;
+        return local.Date == today
+            ? local.ToString("HH:mm", CultureInfo.InvariantCulture)
+            : local.ToString("MMM d, HH:mm", CultureInfo.InvariantCulture);
     }
 
     public static string Watts(double? watts)

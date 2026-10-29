@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <PlatformTarget>x64</PlatformTarget>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../src/Shared/CpuTemperatureProtocol.cs" Link="CpuTemperatureProtocol.cs" />
+    <Compile Include="../../src/StatsBar.SensorService/CpuSensorSelection.cs" Link="CpuSensorSelection.cs" />
+    <Compile Include="../../src/StatsBar.SensorService/CpuTemperaturePipe.cs" Link="CpuTemperaturePipe.cs" />
+    <Compile Include="../../src/StatsBar/Core/Models.cs" Link="Models.cs" />
+    <Compile Include="../../src/StatsBar/Core/FormatText.cs" Link="FormatText.cs" />
+    <Compile Include="../../src/StatsBar/Core/HistoryBuffer.cs" Link="HistoryBuffer.cs" />
+    <Compile Include="../../src/StatsBar/Core/AverageWindow.cs" Link="AverageWindow.cs" />
+    <Compile Include="../../src/StatsBar/Settings/AppSettings.cs" Link="AppSettings.cs" />
+    <Compile Include="../../src/StatsBar/Settings/StripAnchor.cs" Link="StripAnchor.cs" />
+    <Compile Include="../../src/StatsBar/Modules/CpuModule.cs" Link="CpuModule.cs" />
+    <Compile Include="../../src/StatsBar/Modules/SensorsModule.cs" Link="SensorsModule.cs" />
+    <Compile Include="../../src/StatsBar/Sources/CpuTemperatureReader.cs" Link="CpuTemperatureReader.cs" />
+  </ItemGroup>
+</Project>

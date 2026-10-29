@@ -15,6 +15,7 @@ using StatsBar.Taskbar;
 using StatsBar.Ui.Cards;
 using StatsBar.Ui.Settings;
 using StatsBar.Ui.Theme;
+using WinStats.Sensors;
 
 namespace StatsBar;
 
@@ -28,6 +29,8 @@ public partial class App : Application
     private ModuleCardWindow? _card;
     private AppSettings _settings = new();
     private readonly MachineProbe _probe = new();
+    private readonly object _sampleGate = new();
+    private bool _exiting;
     private readonly List<IModuleProvider> _modules =
     [
         new CpuModule(),
@@ -88,6 +91,13 @@ public partial class App : Application
             return;
         }
 
+        if (e.Args.Contains("--sensors-card-shot"))
+        {
+            SaveSensorsCardShot();
+            Shutdown();
+            return;
+        }
+
         if (e.Args.Contains("--settings-shot"))
         {
             SaveSettingsShot();
@@ -111,6 +121,8 @@ public partial class App : Application
 
         _settings = _benchmarkMode ? new AppSettings() : SettingsStore.Load();
         _probe.TemperatureUnit = _settings.TemperatureUnit;
+        _probe.CpuTemperatureEnabled = _settings.CpuTemperatureEnabled;
+        _probe.SensorTemperatureSource = _settings.SensorTemperatureSource;
         if (_settings.StartWithWindows)
             StartupRegistration.Apply(true);
 
@@ -138,7 +150,7 @@ public partial class App : Application
         _placementTimer.Start();
 
         _sampleTimer = new Timer(_ => Sample(), null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
-        _trimTimer = new Timer(_ => TrimWorkingSet(), null, TimeSpan.FromSeconds(30), Timeout.InfiniteTimeSpan);
+        _trimTimer = new Timer(_ => TrimWorkingSet(), null, TimeSpan.FromSeconds(30), TimeSpan.FromMinutes(2));
         SystemEvents.UserPreferenceChanged += OnPreferenceChanged;
         if (_benchmarkMode)
             _benchmark = new BenchmarkSession(e.Args[benchmarkIndex + 1],
@@ -157,7 +169,11 @@ public partial class App : Application
         _placementTimer?.Stop();
         _sampleTimer?.Dispose();
         _trimTimer?.Dispose();
-        _probe.Dispose();
+        lock (_sampleGate)
+        {
+            _exiting = true;
+            _probe.Dispose();
+        }
         _benchmark?.Dispose();
         _strip?.Dispose();
         _mutex?.Dispose();
@@ -178,15 +194,20 @@ public partial class App : Application
 
     private ModuleSnapshot[] BuildAll(bool includeProcesses)
     {
-        foreach (var module in _modules)
+        lock (_sampleGate)
         {
-            module.WantsDetails = _openModule == module.Id;
-            var setting = _settings.Modules.FirstOrDefault(item => item.Id == module.Id);
-            module.WantsSparkline = module.WantsDetails
-                || setting is { Visible: true, Style: StripItemStyle.LineChart };
+            if (_exiting)
+                return [];
+            foreach (var module in _modules)
+            {
+                module.WantsDetails = _openModule == module.Id;
+                var setting = _settings.Modules.FirstOrDefault(item => item.Id == module.Id);
+                module.WantsSparkline = module.WantsDetails
+                    || setting is { Visible: true, Style: StripItemStyle.LineChart };
+            }
+            var frame = _probe.Capture(includeProcesses, _settings.PublicIp);
+            return _modules.Select(module => module.Build(frame)).ToArray();
         }
-        var frame = _probe.Capture(includeProcesses, _settings.PublicIp);
-        return _modules.Select(module => module.Build(frame)).ToArray();
     }
 
     private bool CardWantsProcesses()
@@ -225,7 +246,7 @@ public partial class App : Application
         {
             _card.Hide();
             _openModule = null;
-            _trimTimer?.Change(TimeSpan.FromSeconds(10), Timeout.InfiniteTimeSpan);
+            _trimTimer?.Change(TimeSpan.FromSeconds(10), TimeSpan.FromMinutes(2));
             return;
         }
 
@@ -313,9 +334,11 @@ public partial class App : Application
             StartupRegistration.Apply(_settings.StartWithWindows);
         }
         _probe.TemperatureUnit = _settings.TemperatureUnit;
+        _probe.CpuTemperatureEnabled = _settings.CpuTemperatureEnabled;
+        _probe.SensorTemperatureSource = _settings.SensorTemperatureSource;
         if (_strip != null)
             _strip.CurrentAnchor = _settings.Anchor;
-        Publish(_latest.Length == 0 ? BuildAll(CardWantsProcesses()) : _latest);
+        Publish(BuildAll(CardWantsProcesses()));
     }
 
     private void MaintainPlacement()
@@ -338,6 +361,7 @@ public partial class App : Application
         TaskbarEmbedder.SetStripLayer(_strip.Handle, true);
         TaskbarEmbedder.Move(_strip.Handle, _settings.Anchor, _strip.DesiredWidth, _settings.NudgePixels);
         TaskbarEmbedder.SetStripShown(_strip.Handle, true);
+        _strip.Refresh();
         if (_card is not { IsVisible: true } || _openModule is not ModuleId id)
             return;
         if (!_strip.TryGetItemScreenRect(id, out var left, out var top, out _, out _))
@@ -362,15 +386,23 @@ public partial class App : Application
             return;
         _card = new ModuleCardWindow { KeepOpenForDiagnostics = _benchmarkMode };
         _card.SettingsRequested += OpenSettings;
+        _card.ResetPeaksRequested += ResetSensorPeaks;
+    }
+
+    private void ResetSensorPeaks()
+    {
+        foreach (var module in _modules)
+        {
+            if (module is SensorsModule sensors)
+                sensors.ResetPeaks();
+        }
+        Publish(BuildAll(CardWantsProcesses()));
     }
 
     private void TrimWorkingSet()
     {
         if (_card is { IsVisible: true })
             return;
-        GC.Collect(GC.MaxGeneration, GCCollectionMode.Aggressive, blocking: true, compacting: true);
-        GC.WaitForPendingFinalizers();
-        GC.Collect(GC.MaxGeneration, GCCollectionMode.Aggressive, blocking: true, compacting: true);
         EmptyWorkingSet(System.Diagnostics.Process.GetCurrentProcess().Handle);
     }
 
@@ -455,6 +487,57 @@ public partial class App : Application
         var width = Math.Max(1, (int)Math.Ceiling(content.DesiredSize.Width));
         var height = Math.Max(1, (int)Math.Ceiling(content.DesiredSize.Height));
         File.WriteAllText(Path.Combine(Path.GetTempPath(), "statsbar-card-size.txt"), $"{width}x{height}");
+        var bitmap = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32);
+        bitmap.Render(content);
+        var encoder = new PngBitmapEncoder();
+        encoder.Frames.Add(BitmapFrame.Create(bitmap));
+        using var stream = File.Create(path);
+        encoder.Save(stream);
+    }
+
+    private static void SaveSensorsCardShot()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "statsbar-sensors-card-render.png");
+        var sensors = new SensorsModule { WantsDetails = true };
+        sensors.Build(new SampleFrame
+        {
+            GpuTemperatureC = 52,
+            FanPercent = 38,
+            GraphicsClockMhz = 1920,
+            PowerWatts = 71,
+            SensorTemperatureSource = SensorTemperatureSource.Cpu,
+            CpuTemperature = new CpuTemperatureReading
+            {
+                Celsius = 67.4,
+                SensorName = "Core (Tctl/Tdie)",
+                Status = CpuTemperatureStatus.Available,
+                SampledAtUtc = DateTimeOffset.UtcNow
+            }
+        });
+        var snapshot = sensors.Build(new SampleFrame
+        {
+            GpuTemperatureC = 48,
+            FanPercent = 34,
+            GraphicsClockMhz = 1875,
+            PowerWatts = 64,
+            SensorTemperatureSource = SensorTemperatureSource.Cpu,
+            CpuTemperature = new CpuTemperatureReading
+            {
+                Celsius = 51.6,
+                SensorName = "Core (Tctl/Tdie)",
+                Status = CpuTemperatureStatus.Available,
+                SampledAtUtc = DateTimeOffset.UtcNow
+            }
+        });
+        var card = new ModuleCardWindow();
+        card.Apply(snapshot, dark: false);
+        var content = (FrameworkElement)card.Content;
+        content.Measure(new Size(DesignTokens.CardWidth, double.PositiveInfinity));
+        content.Arrange(new Rect(0, 0, content.DesiredSize.Width, content.DesiredSize.Height));
+        content.UpdateLayout();
+        var width = Math.Max(1, (int)Math.Ceiling(content.DesiredSize.Width));
+        var height = Math.Max(1, (int)Math.Ceiling(content.DesiredSize.Height));
+        File.WriteAllText(Path.Combine(Path.GetTempPath(), "statsbar-sensors-card-size.txt"), $"{width}x{height}");
         var bitmap = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32);
         bitmap.Render(content);
         var encoder = new PngBitmapEncoder();

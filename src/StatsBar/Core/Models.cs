@@ -42,6 +42,8 @@ public sealed class SampleFrame
     public IReadOnlyList<double> CorePercents { get; init; } = [];
     public double FrequencyMhz { get; init; }
     public TimeSpan Uptime { get; init; }
+    public WinStats.Sensors.CpuTemperatureReading CpuTemperature { get; init; } = WinStats.Sensors.CpuTemperatureReading.Disabled;
+    public SensorTemperatureSource SensorTemperatureSource { get; init; } = SensorTemperatureSource.Gpu;
     public ulong RamTotalBytes { get; init; }
     public ulong RamUsedBytes { get; init; }
     public double RamPercent { get; init; }
@@ -97,6 +99,14 @@ public sealed class DetailModel
     public required string ColorKey { get; init; }
 }
 
+public sealed class TemperaturePeakModel
+{
+    public required string Label { get; init; }
+    public required string Value { get; init; }
+    public required string At { get; init; }
+    public required string ColorKey { get; init; }
+}
+
 public sealed class BarModel
 {
     public required string Label { get; init; }
@@ -127,6 +137,7 @@ public sealed class ModuleSnapshot
     public bool StackedChart { get; init; }
     public bool ChartScaleIsPercent { get; init; }
     public IReadOnlyList<DetailModel> Details { get; init; } = [];
+    public IReadOnlyList<TemperaturePeakModel> Peaks { get; init; } = [];
     public IReadOnlyList<BarModel> Bars { get; init; } = [];
     public string BarHeader { get; init; } = "";
     public IReadOnlyList<ProcessModel> Processes { get; init; } = [];

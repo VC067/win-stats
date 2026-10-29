@@ -1,7 +1,13 @@
+using System.IO;
+using System.ComponentModel;
+using System.Diagnostics;
+using System.Net.Http;
 using System.Runtime.InteropServices;
+using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
+using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Markup;
 using System.Windows.Media;
@@ -9,6 +15,7 @@ using StatsBar.Core;
 using StatsBar.Settings;
 using StatsBar.Taskbar;
 using StatsBar.Ui.Theme;
+using StatsBar.Updates;
 
 namespace StatsBar.Ui.Settings;
 
@@ -25,6 +32,8 @@ public sealed class SettingsWindow : Window
     private int _nudgePixels;
     private bool _startWithWindows;
     private bool _publicIp;
+    private bool _cpuTemperatureEnabled;
+    private SensorTemperatureSource _sensorTemperatureSource;
     private StripDensity _density;
     private bool _showLabels;
     private bool _thresholdColors;
@@ -37,6 +46,14 @@ public sealed class SettingsWindow : Window
     private TextBlock _previewWidthText = null!;
     private ComboBox _spacingCombo = null!;
     private ComboBox _presetCombo = null!;
+    private CheckBox _cpuTemperatureCheck = null!;
+    private ComboBox _sensorSourceCombo = null!;
+    private TextBlock _temperatureStatus = null!;
+    private StackPanel _temperatureActions = null!;
+    private Button _driverButton = null!;
+    private Button _removeSensorButton = null!;
+    private bool _saving;
+    private bool _cpuSetupCompleted;
     private bool _ready;
 
     public event Action? Applied;
@@ -57,6 +74,11 @@ public sealed class SettingsWindow : Window
         _nudgePixels = settings.NudgePixels;
         _startWithWindows = settings.StartWithWindows;
         _publicIp = settings.PublicIp;
+        _cpuTemperatureEnabled = settings.CpuTemperatureEnabled;
+        _sensorTemperatureSource = settings.CpuTemperatureEnabled
+            ? settings.SensorTemperatureSource
+            : SensorTemperatureSource.Gpu;
+        _cpuSetupCompleted = settings.CpuTemperatureEnabled;
         _density = settings.Density;
         _showLabels = settings.ShowLabels;
         _thresholdColors = settings.ThresholdColors;
@@ -67,7 +89,7 @@ public sealed class SettingsWindow : Window
         Title = "Win Stats";
         Width = 520;
         SizeToContent = SizeToContent.Height;
-        MaxHeight = 860;
+        MaxHeight = Math.Min(860, SystemParameters.WorkArea.Height - 24);
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
         ResizeMode = ResizeMode.NoResize;
         ShowInTaskbar = false;
@@ -88,33 +110,22 @@ public sealed class SettingsWindow : Window
             HorizontalAlignment = HorizontalAlignment.Right,
             Margin = new Thickness(16)
         };
+        var updateButton = new Button
+        {
+            Content = "Check for updates",
+            MinWidth = 148,
+            MinHeight = 34,
+            Margin = new Thickness(0, 0, 8, 0)
+        };
+        StyleButton(updateButton, primary: false);
+        updateButton.Click += async (_, _) => await CheckForUpdatesAsync(updateButton);
+        buttons.Children.Add(updateButton);
+
         var saveButton = new Button { Content = "Save", IsDefault = true, MinWidth = 88, MinHeight = 34, Margin = new Thickness(0, 0, 8, 0) };
         var cancelButton = new Button { Content = "Cancel", IsCancel = true, MinWidth = 88, MinHeight = 34 };
         StyleButton(saveButton, primary: true);
         StyleButton(cancelButton, primary: false);
-        saveButton.Click += (_, _) =>
-        {
-            _settings.Density = _density;
-            _settings.ShowLabels = true;
-            _settings.ThresholdColors = _thresholdColors;
-            _settings.Spacing = _spacing;
-            _settings.Arrangement = _arrangement;
-            _settings.CombinedItem = false;
-            _settings.WidthCapPixels = 0;
-            _settings.Theme = _theme;
-            _settings.TemperatureUnit = _temperatureUnit;
-            _settings.Anchor = _anchor;
-            _settings.NudgePixels = _nudgePixels;
-            _settings.StartWithWindows = _startWithWindows;
-            _settings.PublicIp = _publicIp;
-            _settings.Modules = _localModules.Select(module => new ModuleSetting
-            {
-                Id = module.Id,
-                Visible = module.Visible,
-                Style = module.Style
-            }).ToList();
-            Applied?.Invoke();
-        };
+        saveButton.Click += async (_, _) => await SaveAsync(saveButton, cancelButton);
         cancelButton.Click += (_, _) => DialogResult = false;
         buttons.Children.Add(saveButton);
         buttons.Children.Add(cancelButton);
@@ -159,7 +170,74 @@ public sealed class SettingsWindow : Window
         generalPanel.Children.Add(themeCombo);
 
         generalPanel.Children.Add(Spacer());
-        generalPanel.Children.Add(Label("Temperature"));
+        generalPanel.Children.Add(Label("Taskbar temperature"));
+        _sensorSourceCombo = new ComboBox { Margin = new Thickness(0, 4, 0, 0) };
+        _sensorSourceCombo.Items.Add("GPU");
+        _sensorSourceCombo.Items.Add("CPU");
+        _sensorSourceCombo.SelectedIndex = _sensorTemperatureSource == SensorTemperatureSource.Cpu ? 1 : 0;
+        _sensorSourceCombo.SelectionChanged += (_, _) =>
+        {
+            _sensorTemperatureSource = _sensorSourceCombo.SelectedIndex == 1
+                ? SensorTemperatureSource.Cpu
+                : SensorTemperatureSource.Gpu;
+            if (_sensorTemperatureSource == SensorTemperatureSource.Cpu && _cpuTemperatureCheck.IsChecked != true)
+                _cpuTemperatureCheck.IsChecked = true;
+        };
+        StyleCombo(_sensorSourceCombo);
+        generalPanel.Children.Add(_sensorSourceCombo);
+
+        _cpuTemperatureCheck = new CheckBox
+        {
+            Content = "CPU temperature",
+            IsChecked = _cpuTemperatureEnabled,
+            Margin = new Thickness(0, 12, 0, 0)
+        };
+        _cpuTemperatureCheck.Checked += (_, _) =>
+        {
+            _cpuTemperatureEnabled = true;
+            RefreshTemperatureStatus();
+        };
+        _cpuTemperatureCheck.Unchecked += (_, _) =>
+        {
+            _cpuTemperatureEnabled = false;
+            if (_sensorTemperatureSource == SensorTemperatureSource.Cpu)
+            {
+                _sensorTemperatureSource = SensorTemperatureSource.Gpu;
+                _sensorSourceCombo.SelectedIndex = 0;
+            }
+            RefreshTemperatureStatus();
+        };
+        StyleCheck(_cpuTemperatureCheck);
+        generalPanel.Children.Add(_cpuTemperatureCheck);
+
+        _temperatureStatus = new TextBlock
+        {
+            FontSize = 13,
+            Foreground = new SolidColorBrush(_palette.Muted),
+            TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(0, 4, 0, 0),
+            Visibility = Visibility.Collapsed
+        };
+        generalPanel.Children.Add(_temperatureStatus);
+
+        _temperatureActions = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Margin = new Thickness(0, 6, 0, 0),
+            Visibility = Visibility.Collapsed
+        };
+        _driverButton = new Button { Content = "Install sensor driver" };
+        StyleLinkButton(_driverButton);
+        _driverButton.Click += async (_, _) => await InstallSensorDriverAsync();
+        _removeSensorButton = new Button { Content = "Remove sensor service" };
+        StyleLinkButton(_removeSensorButton);
+        _removeSensorButton.Click += async (_, _) => await RemoveSensorServiceAsync();
+        _temperatureActions.Children.Add(_driverButton);
+        _temperatureActions.Children.Add(_removeSensorButton);
+        generalPanel.Children.Add(_temperatureActions);
+
+        generalPanel.Children.Add(Spacer());
+        generalPanel.Children.Add(Label("Temperature unit"));
         var tempCombo = new ComboBox { Margin = new Thickness(0, 4, 0, 0) };
         tempCombo.Items.Add(TemperatureUnit.Celsius);
         tempCombo.Items.Add(TemperatureUnit.Fahrenheit);
@@ -244,6 +322,7 @@ public sealed class SettingsWindow : Window
             TextWrapping = TextWrapping.Wrap,
             Margin = new Thickness(0, 4, 0, 0)
         });
+
         _moduleRows = new StackPanel();
         var modulesPanel = new StackPanel
         {
@@ -358,13 +437,235 @@ public sealed class SettingsWindow : Window
         sections.Children.Add(generalPanel);
         sections.Children.Add(modulesPanel);
         sections.Children.Add(widgetsPanel);
-        dock.Children.Add(sections);
+        dock.Children.Add(new ScrollViewer
+        {
+            Content = sections,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+            MaxHeight = Math.Max(200, MaxHeight - 220)
+        });
 
         Content = dock;
 
         RebuildModuleRows();
         _ready = true;
         RefreshPreview();
+        RefreshTemperatureStatus();
+    }
+
+    private async Task SaveAsync(Button saveButton, Button cancelButton)
+    {
+        if (_saving)
+            return;
+
+        _saving = true;
+        saveButton.IsEnabled = false;
+        cancelButton.IsEnabled = false;
+        _cpuTemperatureCheck.IsEnabled = false;
+        _driverButton.IsEnabled = false;
+        string? failureMessage = null;
+        try
+        {
+            if (_cpuTemperatureEnabled
+                && (!_cpuSetupCompleted || !SensorServiceSetup.IsInstalled() || !SensorServiceSetup.IsDriverInstalled()))
+            {
+                _temperatureStatus.Text = "Setting up CPU temperature…";
+                _temperatureStatus.Visibility = Visibility.Visible;
+                var progress = new Progress<string>(text =>
+                {
+                    _temperatureStatus.Text = text;
+                    _temperatureStatus.Visibility = Visibility.Visible;
+                });
+                try
+                {
+                    var result = await SensorServiceSetup.InstallAsync(progress);
+                    if (!result.Succeeded)
+                    {
+                        failureMessage = result.Message;
+                        _cpuTemperatureEnabled = false;
+                        _cpuTemperatureCheck.IsChecked = false;
+                    }
+                    else
+                    {
+                        _cpuSetupCompleted = true;
+                    }
+                }
+                catch (Exception ex) when (ex is IOException or InvalidOperationException or UnauthorizedAccessException)
+                {
+                    failureMessage = ex.Message;
+                    _cpuTemperatureEnabled = false;
+                    _cpuTemperatureCheck.IsChecked = false;
+                }
+            }
+
+            PersistSettings();
+            Applied?.Invoke();
+            RefreshTemperatureStatus();
+            if (failureMessage != null)
+            {
+                _temperatureStatus.Text = failureMessage;
+                _temperatureStatus.Visibility = Visibility.Visible;
+            }
+        }
+        finally
+        {
+            _saving = false;
+            saveButton.IsEnabled = true;
+            cancelButton.IsEnabled = true;
+            _cpuTemperatureCheck.IsEnabled = true;
+            _driverButton.IsEnabled = true;
+        }
+    }
+
+    private void PersistSettings()
+    {
+        _settings.Density = _density;
+        _settings.ShowLabels = true;
+        _settings.ThresholdColors = _thresholdColors;
+        _settings.Spacing = _spacing;
+        _settings.Arrangement = _arrangement;
+        _settings.CombinedItem = false;
+        _settings.WidthCapPixels = 0;
+        _settings.Theme = _theme;
+        _settings.TemperatureUnit = _temperatureUnit;
+        _settings.Anchor = _anchor;
+        _settings.NudgePixels = _nudgePixels;
+        _settings.StartWithWindows = _startWithWindows;
+        _settings.PublicIp = _publicIp;
+        _settings.CpuTemperatureEnabled = _cpuTemperatureEnabled;
+        _settings.SensorTemperatureSource = _cpuTemperatureEnabled
+            ? _sensorTemperatureSource
+            : SensorTemperatureSource.Gpu;
+        _settings.Modules = _localModules.Select(module => new ModuleSetting
+        {
+            Id = module.Id,
+            Visible = module.Visible,
+            Style = module.Style
+        }).ToList();
+    }
+
+    private async Task InstallSensorDriverAsync()
+    {
+        if (_saving)
+            return;
+
+        _saving = true;
+        _driverButton.IsEnabled = false;
+        _cpuTemperatureCheck.IsEnabled = false;
+        string? failureMessage = null;
+        var progress = new Progress<string>(text =>
+        {
+            _temperatureStatus.Text = text;
+            _temperatureStatus.Visibility = Visibility.Visible;
+        });
+        try
+        {
+            _temperatureStatus.Text = "Setting up CPU temperature…";
+            _temperatureStatus.Visibility = Visibility.Visible;
+            var result = await SensorServiceSetup.InstallAsync(progress);
+            if (result.Succeeded)
+            {
+                _cpuSetupCompleted = true;
+            }
+            else
+            {
+                failureMessage = result.Message;
+            }
+
+            RefreshTemperatureStatus();
+            if (failureMessage != null)
+            {
+                _temperatureStatus.Text = failureMessage;
+                _temperatureStatus.Visibility = Visibility.Visible;
+            }
+            else if (!SensorServiceSetup.IsDriverInstalled())
+            {
+                _temperatureStatus.Text = "Couldn't install the sensor driver automatically. Visit https://pawnio.eu/ in your browser.";
+                _temperatureStatus.Visibility = Visibility.Visible;
+            }
+        }
+        catch (Exception ex) when (ex is IOException or InvalidOperationException or UnauthorizedAccessException)
+        {
+            failureMessage = ex.Message;
+            RefreshTemperatureStatus();
+            _temperatureStatus.Text = failureMessage;
+            _temperatureStatus.Visibility = Visibility.Visible;
+        }
+        finally
+        {
+            _saving = false;
+            _driverButton.IsEnabled = true;
+            _cpuTemperatureCheck.IsEnabled = true;
+        }
+    }
+
+    private async Task RemoveSensorServiceAsync()
+    {
+        _removeSensorButton.IsEnabled = false;
+        _cpuTemperatureCheck.IsEnabled = false;
+        _temperatureStatus.Text = "Removing sensor service…";
+        _temperatureStatus.Visibility = Visibility.Visible;
+        try
+        {
+            var result = await SensorServiceSetup.RemoveAsync();
+            if (result.Succeeded)
+            {
+                RefreshTemperatureStatus();
+            }
+            else
+            {
+                _temperatureStatus.Text = result.Message;
+                _temperatureStatus.Visibility = Visibility.Visible;
+            }
+        }
+        catch (Exception ex) when (ex is IOException or InvalidOperationException or UnauthorizedAccessException)
+        {
+            _temperatureStatus.Text = ex.Message;
+            _temperatureStatus.Visibility = Visibility.Visible;
+        }
+        finally
+        {
+            _removeSensorButton.IsEnabled = true;
+            _cpuTemperatureCheck.IsEnabled = true;
+        }
+    }
+
+    private void RefreshTemperatureStatus()
+    {
+        if (_temperatureStatus == null)
+            return;
+
+        var installed = SensorServiceSetup.IsInstalled();
+        var driver = SensorServiceSetup.IsDriverInstalled();
+        _driverButton.Visibility = Visibility.Collapsed;
+        _removeSensorButton.Visibility = Visibility.Collapsed;
+
+        if (!_cpuTemperatureEnabled)
+        {
+            _temperatureStatus.Text = installed ? "CPU temperature is off." : "";
+            _removeSensorButton.Visibility = installed ? Visibility.Visible : Visibility.Collapsed;
+        }
+        else if (!installed)
+        {
+            _temperatureStatus.Text = "Save to give Windows permission.";
+        }
+        else if (!driver)
+        {
+            _temperatureStatus.Text = "CPU temperature needs a one-time sensor driver.";
+            _driverButton.Visibility = Visibility.Visible;
+        }
+        else
+        {
+            _temperatureStatus.Text = "CPU temperature is on.";
+        }
+
+        _temperatureStatus.Visibility = string.IsNullOrEmpty(_temperatureStatus.Text)
+            ? Visibility.Collapsed
+            : Visibility.Visible;
+        _temperatureActions.Visibility = _driverButton.Visibility == Visibility.Visible
+            || _removeSensorButton.Visibility == Visibility.Visible
+            ? Visibility.Visible
+            : Visibility.Collapsed;
     }
 
     private void RefreshPreview()
@@ -509,6 +810,64 @@ public sealed class SettingsWindow : Window
         return new Border { Height = 12 };
     }
 
+    private async Task CheckForUpdatesAsync(Button button)
+    {
+        var originalContent = button.Content;
+        button.IsEnabled = false;
+        button.Content = "Checking…";
+        try
+        {
+            var result = await UpdateChecker.CheckAsync();
+            if (!result.IsUpdateAvailable)
+            {
+                MessageBox.Show(
+                    this,
+                    $"You're using the latest version of Win Stats ({result.CurrentVersion}).",
+                    "Check for updates",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+                return;
+            }
+
+            var choice = MessageBox.Show(
+                this,
+                $"Win Stats {result.LatestVersion} is available (you have {result.CurrentVersion}). Open the GitHub release page?",
+                "Update available",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Information);
+            if (choice == MessageBoxResult.Yes)
+            {
+                try
+                {
+                    Process.Start(new ProcessStartInfo(UpdateChecker.LatestReleasePage) { UseShellExecute = true });
+                }
+                catch (Exception ex) when (ex is Win32Exception or InvalidOperationException)
+                {
+                    MessageBox.Show(
+                        this,
+                        "Couldn't open GitHub Releases. Open it in your browser to download the update.",
+                        "Check for updates",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+                }
+            }
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException or InvalidDataException or InvalidOperationException)
+        {
+            MessageBox.Show(
+                this,
+                "Couldn't check for updates. Check your connection and try again.",
+                "Check for updates",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+        }
+        finally
+        {
+            button.Content = originalContent;
+            button.IsEnabled = true;
+        }
+    }
+
     private void StyleCombo(ComboBox combo)
     {
         var field = FieldBrush();
@@ -540,6 +899,19 @@ public sealed class SettingsWindow : Window
     {
         check.Foreground = new SolidColorBrush(_palette.Text);
         check.FontSize = 14;
+    }
+
+    private void StyleLinkButton(Button button)
+    {
+        button.Foreground = new SolidColorBrush(DesignTokens.Cpu);
+        button.Background = Brushes.Transparent;
+        button.BorderBrush = Brushes.Transparent;
+        button.BorderThickness = new Thickness(0);
+        button.Padding = new Thickness(0);
+        button.FontSize = 13;
+        button.Cursor = Cursors.Hand;
+        button.HorizontalAlignment = HorizontalAlignment.Left;
+        button.Template = LinkButtonTemplate();
     }
 
     private void StyleRadio(RadioButton radio)
@@ -637,6 +1009,26 @@ public sealed class SettingsWindow : Window
                 </Trigger>
                 <Trigger Property="IsEnabled" Value="False">
                   <Setter TargetName="Bd" Property="Opacity" Value="0.45"/>
+                </Trigger>
+              </ControlTemplate.Triggers>
+            </ControlTemplate>
+            """);
+    }
+
+    private static ControlTemplate LinkButtonTemplate()
+    {
+        return (ControlTemplate)XamlReader.Parse("""
+            <ControlTemplate xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" TargetType="Button">
+              <ContentPresenter/>
+              <ControlTemplate.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                  <Setter Property="Opacity" Value="0.72"/>
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                  <Setter Property="Opacity" Value="0.55"/>
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                  <Setter Property="Opacity" Value="0.45"/>
                 </Trigger>
               </ControlTemplate.Triggers>
             </ControlTemplate>

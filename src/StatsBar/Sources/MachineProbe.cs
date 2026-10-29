@@ -12,6 +12,9 @@ public sealed class MachineProbe : IDisposable
 {
     private readonly PdhQuery? _query;
     private readonly NvmlReader _nvml = new();
+    private readonly CpuTemperatureReader _cpuTemperature = new();
+    private readonly object _captureGate = new();
+    private bool _disposed;
     private readonly ProcessTopReader _processes = new();
     private readonly List<CoreCounter> _cores = new();
     private readonly List<EngineCounter> _engines = new();
@@ -39,6 +42,8 @@ public sealed class MachineProbe : IDisposable
     private int _publicIpBusy;
 
     public TemperatureUnit TemperatureUnit { get; set; } = TemperatureUnit.Celsius;
+    public bool CpuTemperatureEnabled { get => _cpuTemperature.Enabled; set => _cpuTemperature.Enabled = value; }
+    public SensorTemperatureSource SensorTemperatureSource { get; set; } = SensorTemperatureSource.Gpu;
 
     public MachineProbe()
     {
@@ -53,6 +58,15 @@ public sealed class MachineProbe : IDisposable
     }
 
     public SampleFrame Capture(bool includeProcesses, bool publicIp)
+    {
+        lock (_captureGate)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            return CaptureCore(includeProcesses, publicIp);
+        }
+    }
+
+    private SampleFrame CaptureCore(bool includeProcesses, bool publicIp)
     {
         EnsureCounters();
         _query?.Collect();
@@ -86,6 +100,8 @@ public sealed class MachineProbe : IDisposable
             CorePercents = cpu.Cores,
             FrequencyMhz = Read(_frequency),
             Uptime = TimeSpan.FromMilliseconds(Environment.TickCount64),
+            CpuTemperature = _cpuTemperature.Read(),
+            SensorTemperatureSource = SensorTemperatureSource,
             RamTotalBytes = memory.Total,
             RamUsedBytes = memory.Used,
             RamPercent = memory.Percent,
@@ -122,8 +138,15 @@ public sealed class MachineProbe : IDisposable
 
     public void Dispose()
     {
-        _query?.Dispose();
-        _nvml.Dispose();
+        lock (_captureGate)
+        {
+            if (_disposed)
+                return;
+            _disposed = true;
+            _cpuTemperature.Dispose();
+            _query?.Dispose();
+            _nvml.Dispose();
+        }
     }
 
     private void EnsureCounters()

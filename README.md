@@ -30,14 +30,14 @@ Application UI rendered with illustrative sample values:
 
 | Area | What it shows |
 | --- | --- |
-| CPU | Usage, per-core activity, frequency, uptime, averages, and top processes |
+| CPU | Usage, per-core activity, frequency, uptime, averages, top processes, and optional temperature |
 | RAM | In-use, free, standby, modified, compressed memory, page file, and top processes |
 | GPU | Usage, engines, VRAM, model, and driver when available |
 | Disk | Drive activity, read/write rates, and capacity |
 | Network | Download and upload rates |
-| Sensors | Available GPU temperature, fan, clock, and power readings |
+| Sensors | Optional CPU temperature and available GPU temperature, fan, clock, and power readings, plus session-high temperatures with reset |
 
-Choose Mini, Line Chart, Bars, Rings, or Speed styles, and Minimal, Balanced, or Detailed presets. The theme can follow Windows or use Light or Dark. CPU and RAM process lists are collected only while their panels are open. Hardware sensor values depend on the available GPU and driver; unsupported readings appear as `--`. CPU temperature is currently unavailable because Win Stats does not bundle a driver.
+Choose Mini, Line Chart, Bars, Rings, or Speed styles, and Minimal, Balanced, or Detailed presets. The theme can follow Windows or use Light or Dark. CPU and RAM process lists are collected only while their panels are open. Hardware sensor values depend on the available hardware and driver; readings that are not available are hidden.
 
 ## Installation
 
@@ -47,7 +47,17 @@ Download the [portable package](https://github.com/VC067/win-stats/releases/down
 
 Win Stats runs on the taskbar and in the notification area. Left-click the Pulse tray icon to open Settings. To start Win Stats when you sign in, enable **Start with Windows** in Settings and select **Save**; this is opt-in.
 
-There is no automatic updater or check-for-updates feature. Download future versions manually from [GitHub Releases](https://github.com/VC067/win-stats/releases). Before rerunning the installer or replacing portable files, quit Win Stats from the tray menu. Settings are retained in `%LocalAppData%\WinStats\settings.json` across updates. No telemetry was found in the application. The optional public-IP setting is off by default; when enabled, it requests the public IP from [api.ipify.org](https://api.ipify.org).
+### CPU temperature
+
+CPU temperature is optional. In Settings, choose **CPU** under **Taskbar temperature** and select **Save**. Windows asks for administrator permission once; Win Stats then installs its small background sensor service and the official signed PawnIO sensor driver automatically. Win Stats itself stays unelevated. The service samples only while a client is active and stops after 10 seconds without one. Make Sensors visible through **Modules** to show temperature in the taskbar.
+
+The Sensors card keeps the highest CPU and GPU temperature for the current session and shows when it occurred. Select **Reset** beside **Session max** to start again. Peaks reset when Win Stats restarts, and turning CPU temperature off clears the CPU peak.
+
+The sensor driver is required because Windows does not expose CPU package temperature to normal applications. Win Stats downloads the pinned official PawnIO 2.2.0 installer from its GitHub release, verifies its SHA-256 hash, and installs it with the same permission prompt. If the automatic download is blocked, Settings shows an **Install sensor driver** link to retry, and the driver can also be installed manually from [pawnio.eu](https://pawnio.eu/). If a CPU does not report a temperature sensor, CPU temperature stays hidden rather than showing an empty reading.
+
+To remove the service, turn CPU temperature off and select **Save**, then use **Remove sensor service** in Settings. Files may remain under `Program Files`, and the shared sensor driver is left installed. Before uninstalling Win Stats, remove the service if it is no longer wanted; the per-user uninstaller cannot silently remove an administrator-installed service.
+
+To check for updates, select **Check for updates** in Settings. Win Stats requests the latest public release tag from GitHub and sends no system readings or identifying system details. If a newer version is available, the app offers to open [GitHub Releases](https://github.com/VC067/win-stats/releases). Updates are installed manually. Before rerunning the installer or replacing portable files, quit Win Stats from the tray menu. Settings are retained in `%LocalAppData%\WinStats\settings.json` across updates. The app collects no usage analytics or system telemetry. The optional public-IP setting is off by default; when enabled, it requests the public IP from [api.ipify.org](https://api.ipify.org).
 
 ## Resource use
 
@@ -77,7 +87,9 @@ dotnet build src/StatsBar/StatsBar.csproj --configuration Release
 dotnet run --project src/StatsBar/StatsBar.csproj
 ```
 
-To package a self-contained x64 build, run `scripts/package.ps1 -Version 0.1.0`. Add `-SkipInstaller` to produce only the portable ZIP and checksums; building the installer requires Inno Setup 6 or 7. The application has no third-party NuGet dependencies; self-contained packaging downloads the Microsoft runtime packs.
+The normal build includes the sensor service output in `SensorsService`. To run the dependency-light sensor regression checks, run `dotnet run --project tests/StatsBar.SensorChecks --configuration Release`.
+
+To package a self-contained x64 build, run `scripts/package.ps1 -Version 0.1.0`. Add `-SkipInstaller` to produce only the portable ZIP and checksums; building the installer requires Inno Setup 6 or 7. The optional self-contained sensor service adds package size. Self-contained packaging downloads the Microsoft runtime packs.
 
 ## Contributing
 

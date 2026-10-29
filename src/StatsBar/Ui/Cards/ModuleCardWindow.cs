@@ -15,6 +15,7 @@ namespace StatsBar.Ui.Cards;
 public sealed class ModuleCardWindow : Window
 {
     public event Action? SettingsRequested;
+    public event Action? ResetPeaksRequested;
     internal bool KeepOpenForDiagnostics { get; set; }
 
     private readonly StackPanel _stack;
@@ -135,9 +136,11 @@ public sealed class ModuleCardWindow : Window
 
         if (snapshot.Gauges.Count > 0)
         {
-            var hero = new StackPanel
+            var columns = snapshot.Gauges.Count > 3 ? 2 : snapshot.Gauges.Count;
+            var hero = new System.Windows.Controls.Primitives.UniformGrid
             {
-                Orientation = Orientation.Horizontal,
+                Columns = columns,
+                Width = columns * 96,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 Margin = new Thickness(0, DesignTokens.SectionGap, 0, 0)
             };
@@ -169,6 +172,54 @@ public sealed class ModuleCardWindow : Window
             chart.SetSeries(snapshot.Chart, snapshot.StackedChart, snapshot.ChartScaleIsPercent);
             chart.Margin = new Thickness(0, 4, 0, 0);
             _stack.Children.Add(chart);
+        }
+
+        if (snapshot.Peaks.Count > 0)
+        {
+            var peakHeader = new Grid { Margin = new Thickness(0, DesignTokens.SectionGap, 0, 0) };
+            peakHeader.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            peakHeader.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            var peakTitle = SectionHeader("Session max", palette);
+            peakTitle.Margin = new Thickness(0);
+            Grid.SetColumn(peakTitle, 0);
+            peakHeader.Children.Add(peakTitle);
+
+            var reset = new Button
+            {
+                Background = Brushes.Transparent,
+                BorderBrush = Brushes.Transparent,
+                BorderThickness = new Thickness(0),
+                Padding = new Thickness(6, 2, 6, 2),
+                Cursor = Cursors.Hand,
+                Focusable = false,
+                Template = GearTemplate(),
+                VerticalAlignment = VerticalAlignment.Center,
+                Content = new TextBlock
+                {
+                    Text = "Reset",
+                    FontSize = 11,
+                    Foreground = new SolidColorBrush(palette.Muted)
+                }
+            };
+            reset.Click += (_, _) => ResetPeaksRequested?.Invoke();
+            Grid.SetColumn(reset, 1);
+            peakHeader.Children.Add(reset);
+            _stack.Children.Add(peakHeader);
+
+            var peakRows = new List<DetailModel>(snapshot.Peaks.Count);
+            foreach (var peak in snapshot.Peaks)
+            {
+                peakRows.Add(new DetailModel
+                {
+                    Label = peak.Label,
+                    Value = $"{peak.Value} · {peak.At}",
+                    ColorKey = peak.ColorKey
+                });
+            }
+            var peakList = new DetailList();
+            peakList.SetRows(peakRows, palette);
+            _stack.Children.Add(peakList);
         }
 
         if (snapshot.Details.Count > 0)

@@ -1,5 +1,6 @@
 using StatsBar.Core;
 using StatsBar.Settings;
+using WinStats.Sensors;
 
 namespace StatsBar.Modules;
 
@@ -56,6 +57,10 @@ public sealed class CpuModule : IModuleProvider
             new SeriesModel { Name = "System", ColorKey = "System", Values = _system.ToArray() }
         };
 
+        var cpuTemperature = frame.CpuTemperature.Status == CpuTemperatureStatus.Disabled
+            ? CpuTemperatureReading.Disabled
+            : CpuTemperatureProtocol.Validate(frame.CpuTemperature, DateTimeOffset.UtcNow);
+        var cpuTemperatureAvailable = cpuTemperature.Status == CpuTemperatureStatus.Available;
         var details = new List<DetailModel>
         {
             new() { Label = "User", Value = FormatText.PercentOrDash(frame.CpuUserPercent, frame.HasCpu), ColorKey = "Cpu" },
@@ -67,6 +72,17 @@ public sealed class CpuModule : IModuleProvider
             new() { Label = "Average 5 min", Value = frame.HasCpu ? FormatText.Percent(_average.Average(300)) : "--", ColorKey = "Cpu" },
             new() { Label = "Average 15 min", Value = frame.HasCpu ? FormatText.Percent(_average.Average(900)) : "--", ColorKey = "Cpu" }
         };
+        if (cpuTemperatureAvailable)
+        {
+            details.Add(new DetailModel
+            {
+                Label = "Temperature",
+                Value = FormatText.Temperature(cpuTemperature.Celsius, frame.TemperatureUnit),
+                ColorKey = "Sensors"
+            });
+            if (!string.IsNullOrWhiteSpace(cpuTemperature.SensorName))
+                details.Add(new DetailModel { Label = "Temperature sensor", Value = cpuTemperature.SensorName, ColorKey = "Neutral" });
+        }
 
         var bars = new List<BarModel>();
         for (var i = 0; i < frame.CorePercents.Count; i++)
@@ -115,8 +131,7 @@ public sealed class CpuModule : IModuleProvider
             Bars = bars,
             BarHeader = "Cores",
             Processes = processes,
-            ProcessValueHeader = processValueHeader,
-            Note = null
+            ProcessValueHeader = processValueHeader
         };
     }
 }

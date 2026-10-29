@@ -130,6 +130,10 @@ public static class StripRenderer
     private const int DtLeft = 0x0000;
     private const int Transparent = 1;
 
+    private static Fonts? _cachedFonts;
+    private static uint _cachedFontsDpi;
+    private static int _cachedFontsHeight;
+
     public static StripLayoutResult Layout(IReadOnlyList<StripWidget> widgets, int height, uint dpi, StripSpacing spacing, int widthCapPixels)
     {
         if (dpi == 0)
@@ -141,39 +145,33 @@ public static class StripRenderer
         return Measure(widgets.Select(Clone).ToList(), height, dpi, spacing);
     }
 
-    public static void Draw(IntPtr dc, IntPtr bits, int width, int height, PlacedWidget[] placed, int hoverIndex, bool lightTaskbar, bool thresholdColors, uint dpi, StripSpacing spacing)
+    public static unsafe void Draw(IntPtr dc, IntPtr bits, int width, int height, PlacedWidget[] placed, int hoverIndex, bool lightTaskbar, bool thresholdColors, uint dpi, StripSpacing spacing)
     {
         if (dpi == 0)
             dpi = 96;
-        if (width < 2 || height < 2 || placed.Length == 0)
+        if (bits == IntPtr.Zero || width < 2 || height < 2 || placed.Length == 0)
             return;
 
-        SetBkMode(dc, Transparent);
-        var fonts = Fonts.Create(dpi, height);
-        try
-        {
-            for (var index = 0; index < placed.Length; index++)
-                DrawWidget(dc, bits, width, height, placed[index], fonts, lightTaskbar, thresholdColors, dpi, spacing);
+        var pixels = new Span<int>((void*)bits, width * height);
+        pixels.Clear();
 
-            if (hoverIndex >= 0 && hoverIndex < placed.Length)
-                PaintHover(bits, width, height, placed[hoverIndex], lightTaskbar);
-        }
-        finally
-        {
-            fonts.Dispose();
-        }
+        SetBkMode(dc, Transparent);
+        var fonts = GetFonts(dpi, height);
+        for (var index = 0; index < placed.Length; index++)
+            DrawWidget(dc, bits, width, height, placed[index], fonts, lightTaskbar, thresholdColors, dpi, spacing);
+
+        if (hoverIndex >= 0 && hoverIndex < placed.Length)
+            PaintHover(bits, width, height, placed[hoverIndex], lightTaskbar);
     }
 
-    public static void ApplyHitMask(IntPtr bits, int width, int height)
+    public static unsafe void ApplyHitMask(IntPtr bits, int width, int height)
     {
-        var count = width * height;
-        for (var i = 0; i < count; i++)
-        {
-            var pixel = Marshal.ReadInt32(bits, i * 4);
-            if ((pixel >> 24) != 0)
-                continue;
-            Marshal.WriteInt32(bits, i * 4, 1 << 24);
-        }
+        if (bits == IntPtr.Zero || width <= 0 || height <= 0)
+            return;
+        var pixels = new Span<int>((void*)bits, width * height);
+        for (var index = 0; index < pixels.Length; index++)
+            if ((pixels[index] >> 24) == 0)
+                pixels[index] = 1 << 24;
     }
 
     public static System.Windows.Media.Imaging.BitmapSource RenderPreview(IReadOnlyList<StripWidget> widgets, int height, uint dpi, bool lightTaskbar, bool thresholdColors, StripSpacing spacing, int widthCapPixels)
@@ -201,7 +199,7 @@ public static class StripRenderer
         var metrics = MetricsFor(height, dpi, spacing);
         var screen = GetDC(IntPtr.Zero);
         var memory = CreateCompatibleDC(screen);
-        var fonts = Fonts.Create(dpi, height);
+        var fonts = GetFonts(dpi, height);
         try
         {
             var placed = new PlacedWidget[widgets.Count];
@@ -226,10 +224,21 @@ public static class StripRenderer
         }
         finally
         {
-            fonts.Dispose();
             DeleteDC(memory);
             ReleaseDC(IntPtr.Zero, screen);
         }
+    }
+
+    private static Fonts GetFonts(uint dpi, int height)
+    {
+        if (_cachedFonts != null && _cachedFontsDpi == dpi && _cachedFontsHeight == height)
+            return _cachedFonts;
+
+        _cachedFonts?.Dispose();
+        _cachedFonts = Fonts.Create(dpi, height);
+        _cachedFontsDpi = dpi;
+        _cachedFontsHeight = height;
+        return _cachedFonts;
     }
 
     private static (int Width, PlacedPart[] Parts) MeasureWidget(IntPtr dc, Fonts fonts, StripWidget widget, Metrics metrics, int origin, int height)

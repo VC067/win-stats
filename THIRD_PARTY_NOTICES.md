@@ -21,6 +21,12 @@ Self-contained Windows packages include Microsoft .NET and Windows Desktop runti
 
 See the runtime [source and license](https://github.com/dotnet/runtime) and the [WPF source](https://github.com/dotnet/wpf). The complete bundled notices are included in the ZIP and installed application.
 
+## Sensor service
+
+The optional sensor service bundles LibreHardwareMonitor 0.9.6, licensed under the Mozilla Public License 2.0. Its license is included with the service files. See the [LibreHardwareMonitor source](https://github.com/LibreHardwareMonitor/LibreHardwareMonitor) and the [MPL 2.0 text](https://www.mozilla.org/en-US/MPL/2.0/).
+
+The service dependency graph retains its own licenses; the corresponding bundled license files are included with the service. When CPU temperature is enabled, Win Stats downloads the official signed PawnIO 2.2.0 installer from its [GitHub release](https://github.com/namazso/PawnIO.Setup/releases/tag/2.2.0), verifies its SHA-256 hash, and installs it with administrator permission. PawnIO is licensed under GPL-2.0, and its bundled modules retain their own licenses. See the [PawnIO source](https://github.com/namazso/PawnIO). Win Stats does not redistribute the driver.
+
 ## Windows and GPU components
 
 Segoe UI / Segoe Fluent Icons fonts, Windows system libraries, and NVIDIA's `nvml.dll` are loaded from the user's Windows installation or GPU driver. They are not redistributed in this repository or copied into the application packages.

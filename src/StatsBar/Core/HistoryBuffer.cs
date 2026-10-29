@@ -17,6 +17,12 @@ public sealed class HistoryBuffer
             _count++;
     }
 
+    public void Clear()
+    {
+        _next = 0;
+        _count = 0;
+    }
+
     public double[] ToArray()
     {
         var result = new double[_count];

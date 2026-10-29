@@ -18,10 +18,27 @@
     <ServerGarbageCollection>false</ServerGarbageCollection>
     <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
     <TieredPGO>false</TieredPGO>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>
     <Resource Include="Assets\WinStats.ico" />
+    <Compile Include="..\Shared\CpuTemperatureProtocol.cs" Link="Sensors\CpuTemperatureProtocol.cs" />
+    <Compile Include="..\Shared\PawnIoInstaller.cs" Link="Sensors\PawnIoInstaller.cs" />
+    <ProjectReference Include="..\StatsBar.SensorService\StatsBar.SensorService.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
+
+  <Target Name="CopySensorService" AfterTargets="Build">
+    <MSBuild Projects="..\StatsBar.SensorService\StatsBar.SensorService.csproj" Targets="GetTargetPath" Properties="Configuration=$(Configuration)">
+      <Output TaskParameter="TargetOutputs" ItemName="_SensorServiceTarget" />
+    </MSBuild>
+    <PropertyGroup>
+      <_SensorServiceDirectory>@(_SensorServiceTarget->'%(RootDir)%(Directory)')</_SensorServiceDirectory>
+    </PropertyGroup>
+    <ItemGroup>
+      <_SensorServiceFiles Include="$(_SensorServiceDirectory)**\*" Exclude="**\*.pdb" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_SensorServiceFiles)" DestinationFiles="@(_SensorServiceFiles->'$(TargetDir)SensorsService\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+  </Target>
 
 </Project>
