@@ -2,6 +2,8 @@
 
 Status of the v0.1.0 launch and remaining manual validation. Unchecked items are follow-up checks, not claims of completed testing.
 
+`main` is ahead of the published v0.1.0 installer and includes optional CPU temperature and session peaks. Those changes are listed under Unreleased in `CHANGELOG.md` and are not in the v0.1.0 packages. Before the next release, package and smoke-test the installer and portable ZIP, then replace the Unreleased heading with the real version. Those steps are not done.
+
 - [x] Add the MIT license for original code, website and artwork, retaining required third-party notices.
 - [x] Build the tagged release commit in a clean GitHub Actions checkout.
 - [ ] Smoke-test installer and portable ZIP on a clean Windows 11 x64 system without .NET installed.

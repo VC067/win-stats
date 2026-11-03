@@ -52,12 +52,12 @@ const modules = {
   sensors: {
     name: "Sensors",
     title: "Check the available sensors.",
-    description: "Available temperature, fan, clock and power readings from your GPU.",
+    description: "Available GPU temperature, fan, clock and power readings, plus optional CPU temperature.",
     dark: "assets/media/sensors-dark.png",
     light: "assets/media/sensors-light.png",
     alt: "Win Stats sensors card. Numbers are samples.",
     height: 895,
-    note: "Hardware support varies. CPU temperature is unavailable; no sensor driver is installed."
+    note: "Hardware support varies. CPU temperature is optional and turned on in Settings."
   }
 };
 

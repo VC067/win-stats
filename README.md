@@ -8,8 +8,6 @@
 
 Maintained by [VC067](https://github.com/VC067).
 
-## Product demonstration
-
 Application UI rendered with illustrative sample values:
 
 ![Win Stats balanced taskbar strip](website/assets/media/strip-balanced-dark.png)
@@ -41,9 +39,9 @@ Choose Mini, Line Chart, Bars, Rings, or Speed styles, and Minimal, Balanced, or
 
 ## Installation
 
-Download the [x64 installer](https://github.com/VC067/win-stats/releases/download/v0.1.0/WinStats-Setup-x64.exe). It installs for the current user, adds a Start menu entry named **Win Stats**, and launches Win Stats at the end of an interactive installation. It does not require a separate .NET installation. Builds are currently unsigned, so Windows may show a publisher warning.
+Download the [x64 installer](https://github.com/VC067/win-stats/releases/latest/download/WinStats-Setup-x64.exe). It installs for the current user, adds a Start menu entry named **Win Stats**, and launches Win Stats at the end of an interactive installation. It does not require a separate .NET installation. Builds are currently unsigned, so Windows may show a publisher warning.
 
-Download the [portable package](https://github.com/VC067/win-stats/releases/download/v0.1.0/WinStats-portable-x64.zip). Fully extract the ZIP, then launch `WinStats.exe` from its extracted folder. Portable use does not create a Start menu shortcut.
+Download the [portable package](https://github.com/VC067/win-stats/releases/latest/download/WinStats-portable-x64.zip). Fully extract the ZIP, then launch `WinStats.exe` from its extracted folder. Portable use does not create a Start menu shortcut.
 
 Win Stats runs on the taskbar and in the notification area. Left-click the Pulse tray icon to open Settings. To start Win Stats when you sign in, enable **Start with Windows** in Settings and select **Save**; this is opt-in.
 
@@ -57,7 +55,9 @@ The sensor driver is required because Windows does not expose CPU package temper
 
 To remove the service, turn CPU temperature off and select **Save**, then use **Remove sensor service** in Settings. Files may remain under `Program Files`, and the shared sensor driver is left installed. Before uninstalling Win Stats, remove the service if it is no longer wanted; the per-user uninstaller cannot silently remove an administrator-installed service.
 
-To check for updates, select **Check for updates** in Settings. Win Stats requests the latest public release tag from GitHub and sends no system readings or identifying system details. If a newer version is available, the app offers to open [GitHub Releases](https://github.com/VC067/win-stats/releases). Updates are installed manually. Before rerunning the installer or replacing portable files, quit Win Stats from the tray menu. Settings are retained in `%LocalAppData%\WinStats\settings.json` across updates. The app collects no usage analytics or system telemetry. The optional public-IP setting is off by default; when enabled, it requests the public IP from [api.ipify.org](https://api.ipify.org).
+## Privacy and updates
+
+To check for updates, select **Check for updates** in Settings. Win Stats requests the latest public release tag from GitHub and sends no system readings or identifying system details. If a newer version is available, the app offers to open [GitHub Releases](https://github.com/VC067/win-stats/releases). Updates are installed manually. Before rerunning the installer or replacing portable files, quit Win Stats from the tray menu. Settings are retained in `%LocalAppData%\WinStats\settings.json` across updates. The app collects no usage analytics or system telemetry. The optional public-IP setting is off by default; when enabled, it requests the public IP from [api.ipify.org](https://api.ipify.org). Enabling CPU temperature downloads the pinned PawnIO 2.2.0 installer from GitHub after the user saves that setting.
 
 ## Resource use
 
@@ -68,7 +68,7 @@ Measured averages on one Windows 11 PC with 12 logical processors, 13 October 20
 | Default strip, idle | 0.17% | 35.4 MiB | 48.9 MiB |
 | CPU detail panel open | 0.41% | 98.6 MiB | 116.0 MiB |
 
-Each state includes 30 samples. Usage varies by machine and workload; see the [resource-use notes](docs/PERFORMANCE.md) for method and limits.
+These measurements predate the optional sensor service and do not include it. Each state includes 30 samples. Usage varies by machine and workload; see the [resource-use notes](docs/PERFORMANCE.md) for method and limits.
 
 ## Requirements and limitations
 

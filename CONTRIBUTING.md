@@ -11,7 +11,7 @@ dotnet restore src/StatsBar/StatsBar.csproj
 dotnet build src/StatsBar/StatsBar.csproj -c Release
 ```
 
-GUI smoke tests are manual: launch the built app on Windows and check the taskbar display and the settings or module cards relevant to your change. There is no automated test project.
+GUI smoke tests are manual: launch the built app on Windows and check the taskbar display and the settings or module cards relevant to your change. Sensor regression checks are available with `dotnet run --project tests/StatsBar.SensorChecks --configuration Release`.
 
 ## Changes
 

@@ -37,8 +37,8 @@
         <div class="hero-copy">
           <h1>Your system.<br><span>Right in the taskbar.</span></h1>
           <p class="lead">CPU, memory, graphics, disk and network activity.<br class="desktop-break"> Keep an eye on your Windows PC without opening Task Manager.</p>
-          <a class="btn primary" href="https://github.com/VC067/win-stats/releases/download/v0.1.0/WinStats-Setup-x64.exe">Download for Windows</a>
-          <p class="fine">Windows 11 x64. <a href="https://github.com/VC067/win-stats/releases/download/v0.1.0/WinStats-portable-x64.zip">Portable ZIP</a> also available.</p>
+          <a class="btn primary" href="https://github.com/VC067/win-stats/releases/latest/download/WinStats-Setup-x64.exe">Download for Windows</a>
+          <p class="fine">Windows 11 x64. <a href="https://github.com/VC067/win-stats/releases/latest/download/WinStats-portable-x64.zip">Portable ZIP</a> also available.</p>
         </div>
       </div>
       <figure class="overview wrap">
@@ -127,7 +127,7 @@
         <div>
         <details>
           <summary>How do I install and open it?</summary>
-          <p>Download <a href="https://github.com/VC067/win-stats/releases/download/v0.1.0/WinStats-Setup-x64.exe">WinStats-Setup-x64.exe</a>. The installer adds Win Stats to your Start menu. Prefer portable? Extract the entire <a href="https://github.com/VC067/win-stats/releases/download/v0.1.0/WinStats-portable-x64.zip">portable ZIP</a> and run WinStats.exe from that folder. No separate .NET installation is needed.</p>
+          <p>Download <a href="https://github.com/VC067/win-stats/releases/latest/download/WinStats-Setup-x64.exe">WinStats-Setup-x64.exe</a>. The installer adds Win Stats to your Start menu. Prefer portable? Extract the entire <a href="https://github.com/VC067/win-stats/releases/latest/download/WinStats-portable-x64.zip">portable ZIP</a> and run WinStats.exe from that folder. No separate .NET installation is needed.</p>
         </details>
         <details>
           <summary>Where is the app window?</summary>
@@ -139,11 +139,11 @@
         </details>
         <details>
           <summary>Why do some values say "--"?</summary>
-          <p>Windows or the GPU driver did not provide that reading. CPU temperature stays blank because there is no sensor driver.</p>
+          <p>Windows or the GPU driver did not provide that reading, so it stays blank. CPU temperature appears only after you enable it in Settings, which installs the sensor service and the PawnIO driver. If the CPU has no temperature sensor, that reading stays hidden.</p>
         </details>
         <details>
           <summary>Does it contact an external service?</summary>
-          <p>A user-initiated update check requests public release information from GitHub. Public IP lookup is off by default. If you enable it in Settings, Win Stats contacts api.ipify.org to find the internet-facing IP address of your connection and display it in the network card.</p>
+          <p>Win Stats collects no usage analytics. A user-initiated update check requests public release information from GitHub. Public IP lookup is off by default; if you enable it in Settings, Win Stats contacts api.ipify.org and shows that address on the network card. Enabling CPU temperature downloads the official PawnIO installer from GitHub.</p>
         </details>
         <details>
           <summary>How do updates work?</summary>
