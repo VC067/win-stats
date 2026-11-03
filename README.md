@@ -89,7 +89,7 @@ dotnet run --project src/StatsBar/StatsBar.csproj
 
 The normal build includes the sensor service output in `SensorsService`. To run the dependency-light sensor regression checks, run `dotnet run --project tests/StatsBar.SensorChecks --configuration Release`.
 
-To package a self-contained x64 build, run `scripts/package.ps1 -Version 0.1.0`. Add `-SkipInstaller` to produce only the portable ZIP and checksums; building the installer requires Inno Setup 6 or 7. The optional self-contained sensor service adds package size. Self-contained packaging downloads the Microsoft runtime packs.
+To package a self-contained x64 build, run `scripts/package.ps1 -Version 0.2.0`. Add `-SkipInstaller` to produce only the portable ZIP and checksums; building the installer requires Inno Setup 6 or 7. The optional self-contained sensor service adds package size. Self-contained packaging downloads the Microsoft runtime packs.
 
 ## Contributing
 

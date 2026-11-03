@@ -2,7 +2,7 @@
 
 Changes to Win Stats are recorded here.
 
-## Unreleased
+## [0.2.0] - 2026-11-03
 
 - Optional CPU temperature through a background sensor service and the official PawnIO driver.
 - Session-high CPU and GPU temperatures, with a reset.
