@@ -2,6 +2,11 @@
 
 Changes to Win Stats are recorded here.
 
+## Unreleased
+
+- The taskbar keeps the module order chosen in Settings.
+- Settings includes a quiet link to star the project on GitHub.
+
 ## [0.2.0] - 2026-11-03
 
 - Optional CPU temperature through a background sensor service and the official PawnIO driver.

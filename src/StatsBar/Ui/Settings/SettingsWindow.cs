@@ -104,11 +104,29 @@ public sealed class SettingsWindow : Window
 
         var dock = new DockPanel { Background = new SolidColorBrush(_palette.Card) };
 
-        var buttons = new StackPanel
+        var buttons = new DockPanel { Margin = new Thickness(16), LastChildFill = false };
+        var starTone = new SolidColorBrush(Color.FromRgb(0x8E, 0x8E, 0x93));
+        starTone.Freeze();
+        var starLink = new Hyperlink(new Run("Star on GitHub"))
+        {
+            Foreground = starTone,
+            TextDecorations = null
+        };
+        starLink.Click += (_, _) => Process.Start(new ProcessStartInfo("https://github.com/VC067/win-stats") { UseShellExecute = true });
+        var starText = new TextBlock
+        {
+            FontSize = 11,
+            Foreground = starTone,
+            VerticalAlignment = VerticalAlignment.Center,
+            Inlines = { starLink }
+        };
+        DockPanel.SetDock(starText, Dock.Left);
+        buttons.Children.Add(starText);
+
+        var actions = new StackPanel
         {
             Orientation = Orientation.Horizontal,
-            HorizontalAlignment = HorizontalAlignment.Right,
-            Margin = new Thickness(16)
+            HorizontalAlignment = HorizontalAlignment.Right
         };
         var updateButton = new Button
         {
@@ -119,7 +137,7 @@ public sealed class SettingsWindow : Window
         };
         StyleButton(updateButton, primary: false);
         updateButton.Click += async (_, _) => await CheckForUpdatesAsync(updateButton);
-        buttons.Children.Add(updateButton);
+        actions.Children.Add(updateButton);
 
         var saveButton = new Button { Content = "Save", IsDefault = true, MinWidth = 88, MinHeight = 34, Margin = new Thickness(0, 0, 8, 0) };
         var cancelButton = new Button { Content = "Cancel", IsCancel = true, MinWidth = 88, MinHeight = 34 };
@@ -127,8 +145,10 @@ public sealed class SettingsWindow : Window
         StyleButton(cancelButton, primary: false);
         saveButton.Click += async (_, _) => await SaveAsync(saveButton, cancelButton);
         cancelButton.Click += (_, _) => DialogResult = false;
-        buttons.Children.Add(saveButton);
-        buttons.Children.Add(cancelButton);
+        actions.Children.Add(saveButton);
+        actions.Children.Add(cancelButton);
+        DockPanel.SetDock(actions, Dock.Right);
+        buttons.Children.Add(actions);
         DockPanel.SetDock(buttons, Dock.Bottom);
         dock.Children.Add(buttons);
 

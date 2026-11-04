@@ -143,24 +143,23 @@ public static class SettingsStore
 
     private static List<ModuleSetting> NormalizeModules(List<ModuleSetting>? modules)
     {
-        var byId = new Dictionary<ModuleId, ModuleSetting>();
+        var ordered = new List<ModuleSetting>();
+        var seen = new HashSet<ModuleId>();
         if (modules != null)
         {
             foreach (var module in modules)
             {
-                if (!Enum.IsDefined(module.Id))
+                if (!Enum.IsDefined(module.Id) || !seen.Add(module.Id))
                     continue;
-                byId[module.Id] = module;
+                ordered.Add(module);
             }
         }
 
-        var ordered = new List<ModuleSetting>();
         foreach (var id in Enum.GetValues<ModuleId>())
         {
-            if (byId.TryGetValue(id, out var existing))
-                ordered.Add(existing);
-            else
-                ordered.Add(new ModuleSetting { Id = id });
+            if (seen.Contains(id))
+                continue;
+            ordered.Add(new ModuleSetting { Id = id });
         }
 
         return ordered;
