@@ -2,7 +2,7 @@
 
 Status of the v0.1.0 launch and remaining manual validation. Unchecked items are follow-up checks, not claims of completed testing.
 
-v0.2.0 is the release cut for the CPU temperature and session-peak work. The v0.1.0 packages do not include that work. Clean-machine install, startup, upgrade, uninstall, and sensor checks below are still open.
+v0.2.1 is the release for the taskbar module-order fix. v0.2.0 remains the CPU temperature release. Clean-machine install, startup, upgrade, uninstall, and sensor checks below are still open.
 
 - [x] Add the MIT license for original code, website and artwork, retaining required third-party notices.
 - [x] Build the tagged release commit in a clean GitHub Actions checkout.
